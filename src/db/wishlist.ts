@@ -17,10 +17,10 @@ export async function getCustomerWishlist(customerId: number) {
 
 export async function addWishlistItem(data: {
   customerId: number;
-  fabricId?: number;
-  description?: string;
-  requestedMeters?: number;
-  notes?: string;
+  fabricId?: number | null;
+  description?: string | null;
+  requestedMeters?: number | null;
+  notes?: string | null;
 }) {
   return prisma.wishlistItem.create({
     data: {

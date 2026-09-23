@@ -15,13 +15,33 @@ model Customer {
   city              String?  @db.VarChar(100)
   instagramUsername String?  @db.VarChar(100)
   createdAt         DateTime @default(now())
-  wishlistItems WishlistItem[]
 
-  designers     Designer[]
-  orders        Order[]
-  conversations Conversation[]
+  wishlistItems     WishlistItem[]
+  designers         Designer[]
+  orders            Order[]
+  conversations     Conversation[]
+  observations      CustomerObservation[]
 
   @@index([instagramUsername])
+}
+
+model CustomerObservation {
+  id          Int      @id @default(autoincrement())
+  customerId  Int
+
+  type        String   @db.VarChar(100)
+  observation String
+  source      String?  @db.VarChar(100)
+  confidence  Float?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customer    Customer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@index([type])
+  @@index([createdAt])
 }
 
 model Designer {
@@ -96,13 +116,14 @@ model Order {
 }
 
 model Conversation {
-  id         Int      @id @default(autoincrement())
+  id         Int                  @id @default(autoincrement())
   customerId Int?
-  platform   String?  @db.VarChar(50)
-  startedAt  DateTime @default(now())
-  status     String   @default("open") @db.VarChar(50)
+  platform   String?              @db.VarChar(50)
+  startedAt  DateTime             @default(now())
+  status     String               @default("open") @db.VarChar(50)
 
-  customer Customer? @relation(fields: [customerId], references: [id])
+  customer   Customer?            @relation(fields: [customerId], references: [id])
+  messages   ConversationMessage[]
 
   @@index([customerId])
 }
@@ -178,4 +199,17 @@ model WishlistItem {
 
   @@index([customerId])
   @@index([status])
+}
+model ConversationMessage {
+  id             Int          @id @default(autoincrement())
+  conversationId Int
+  role           String       @db.VarChar(30)
+  content        String?
+  imageUrl       String?
+  createdAt      DateTime     @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([conversationId])
+  @@index([createdAt])
 }

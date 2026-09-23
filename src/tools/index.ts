@@ -7,6 +7,7 @@ import { conversationTools } from "./conversations.js";
 import { competitorTools } from "./competitors.js";
 import { trendTools } from "./trends.js";
 import { opportunityTools } from "./opportunities.js";
+import { customerObservationTools } from "./customerObservations.js";
 
 export const tools = {
   ...customerTools,
@@ -18,4 +19,5 @@ export const tools = {
   ...competitorTools,
   ...trendTools,
   ...opportunityTools,
+  ...customerObservationTools,
 };
