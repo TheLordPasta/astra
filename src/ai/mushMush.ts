@@ -9,7 +9,7 @@ import type { ResponseInputItem } from "openai/resources/responses/responses";
 
 const openai = new OpenAI();
 
-const model = process.env.OPENAI_MODEL ?? "gpt-5.6-luna";
+const model = process.env.OPENAI_MODEL ?? "gpt-6-astra";
 
 export async function askMushMush(question: string) {
   const input: ResponseInputItem[] = [

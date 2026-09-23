@@ -65,6 +65,7 @@ export async function addConversationMessage(data: {
   role: string;
   content?: string | null;
   imageUrl?: string | null;
+  externalMessageId?: string | null;
 }) {
   return prisma.conversationMessage.create({
     data: {
@@ -72,6 +73,7 @@ export async function addConversationMessage(data: {
       role: data.role,
       content: data.content ?? null,
       imageUrl: data.imageUrl ?? null,
+      externalMessageId: data.externalMessageId ?? null,
     },
   });
 }
@@ -83,6 +85,44 @@ export async function getConversationMessages(conversationId: number) {
     },
     orderBy: {
       createdAt: "asc",
+    },
+  });
+}
+
+export async function getConversationByPlatformExternalId(
+  platform: string,
+  externalId: string,
+) {
+  return prisma.conversation.findUnique({
+    where: {
+      platform_externalId: {
+        platform,
+        externalId,
+      },
+    },
+  });
+}
+
+export async function createChannelConversation(
+  customerId: number,
+  platform: string,
+  externalId: string,
+) {
+  return prisma.conversation.create({
+    data: {
+      customerId,
+      platform,
+      externalId,
+    },
+  });
+}
+
+export async function getConversationMessageByExternalId(
+  externalMessageId: string,
+) {
+  return prisma.conversationMessage.findUnique({
+    where: {
+      externalMessageId,
     },
   });
 }

@@ -6,6 +6,23 @@ export async function getCustomerById(id: number) {
   });
 }
 
+export async function getCustomerByInstagramUserId(instagramUserId: string) {
+  return prisma.customer.findUnique({
+    where: {
+      instagramUserId,
+    },
+  });
+}
+
+export async function createInstagramCustomer(instagramUserId: string) {
+  return prisma.customer.create({
+    data: {
+      name: "Instagram Customer",
+      instagramUserId,
+    },
+  });
+}
+
 export async function searchCustomers(query: string) {
   return prisma.customer.findMany({
     where: {

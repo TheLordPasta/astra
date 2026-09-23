@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+import { marketResearchTool } from "./marketResearchTool.js";
+import { researchMemoryTool } from "./researchMemoryTool.js";
+
 export const getCustomerByIdSchema = z.object({
   id: z.number().int().positive(),
 });
@@ -517,4 +520,7 @@ export const aiTools = [
     },
     strict: true,
   },
+
+  researchMemoryTool,
+  marketResearchTool,
 ];

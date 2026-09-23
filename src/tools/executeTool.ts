@@ -1,5 +1,9 @@
 import { getCustomerById } from "../db/customers.js";
 
+import { executeMarketResearchTool } from "./marketResearchTool.js";
+
+import { executeResearchMemoryTool } from "./researchMemoryTool.js";
+
 import { getCustomerWishlist, addWishlistItem } from "../db/wishlist.js";
 
 import {
@@ -370,8 +374,27 @@ export async function executeTool(
       }
 
       // -------------------------
+      // RESEARCH MEMORY
+      // -------------------------
+
+      case "get_research_memory": {
+        console.log("\n🔎 RESEARCH MEMORY TOOL CALL");
+        console.log("Arguments:", rawArguments);
+
+        const result = await executeResearchMemoryTool(rawArguments);
+
+        console.log("Result:", result);
+
+        return result;
+      }
+
+      // -------------------------
       // UNKNOWN
       // -------------------------
+
+      case "run_market_research": {
+        return await executeMarketResearchTool(rawArguments);
+      }
 
       default:
         return JSON.stringify({

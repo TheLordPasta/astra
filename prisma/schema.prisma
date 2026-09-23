@@ -8,14 +8,14 @@ datasource db {
 }
 
 model Customer {
-  id                Int      @id @default(autoincrement())
-  name              String   @db.VarChar(150)
-  email             String?  @db.VarChar(255)
-  phone             String?  @db.VarChar(50)
-  city              String?  @db.VarChar(100)
-  instagramUsername String?  @db.VarChar(100)
-  createdAt         DateTime @default(now())
-
+  id                Int                   @id @default(autoincrement())
+  name              String                @db.VarChar(150)
+  email             String?               @db.VarChar(255)
+  phone             String?               @db.VarChar(50)
+  city              String?               @db.VarChar(100)
+  instagramUsername String?               @db.VarChar(100)
+  instagramUserId   String?               @unique @db.VarChar(100)
+  createdAt         DateTime              @default(now())
   wishlistItems     WishlistItem[]
   designers         Designer[]
   orders            Order[]
@@ -26,18 +26,16 @@ model Customer {
 }
 
 model CustomerObservation {
-  id          Int      @id @default(autoincrement())
-  customerId  Int
-
-  type        String   @db.VarChar(100)
-  observation String
-  source      String?  @db.VarChar(100)
-  confidence  Float?
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  customer    Customer @relation(fields: [customerId], references: [id])
+  id                Int                                   @id @default(autoincrement())
+  customerId        Int
+  type              String                                @db.VarChar(100)
+  observation       String
+  source            String?                               @db.VarChar(100)
+  confidence        Float?
+  createdAt         DateTime                              @default(now())
+  updatedAt         DateTime                              @updatedAt
+  customer          Customer                              @relation(fields: [customerId], references: [id])
+  classroomInsights ClassroomInsightCustomerObservation[] @relation("CustomerObservationToInsight")
 
   @@index([customerId])
   @@index([type])
@@ -45,46 +43,45 @@ model CustomerObservation {
 }
 
 model Designer {
-  id                Int      @id @default(autoincrement())
-  name              String   @db.VarChar(150)
-  brandName         String?  @db.VarChar(150)
-  instagramUsername String?  @db.VarChar(100)
-  country           String?  @db.VarChar(100)
-  specialization    String?  @db.VarChar(150)
+  id                Int       @id @default(autoincrement())
+  name              String    @db.VarChar(150)
+  brandName         String?   @db.VarChar(150)
+  instagramUsername String?   @db.VarChar(100)
+  country           String?   @db.VarChar(100)
+  specialization    String?   @db.VarChar(150)
   customerId        Int?
-  createdAt         DateTime @default(now())
-  fabricReferences Fabric[] 
-  customer Customer? @relation(fields: [customerId], references: [id])
+  createdAt         DateTime  @default(now())
+  fabricReferences  Fabric[]
+  customer          Customer? @relation(fields: [customerId], references: [id])
 
   @@index([instagramUsername])
 }
 
-
 model Fabric {
-  id               Int       @id @default(autoincrement())
-  referenceName    String?   @db.VarChar(200)
-  providerName     String?   @db.VarChar(150)
+  id            Int     @id @default(autoincrement())
+  referenceName String? @db.VarChar(200)
+  providerName  String? @db.VarChar(150)
 
-  fabricType       String?   @db.VarChar(100)
-  composition      String?   @db.VarChar(255)
-  color            String?   @db.VarChar(100)
-  weightGrams      Int?
-  stretch          Boolean   @default(false)
-  transparency     String?   @db.VarChar(50)
+  fabricType   String? @db.VarChar(100)
+  composition  String? @db.VarChar(255)
+  color        String? @db.VarChar(100)
+  weightGrams  Int?
+  stretch      Boolean @default(false)
+  transparency String? @db.VarChar(50)
 
-  pricePerMeter    Decimal?  @db.Decimal(10, 2)
-  stockMeters      Decimal?  @db.Decimal(10, 2)
+  pricePerMeter Decimal? @db.Decimal(10, 2)
+  stockMeters   Decimal? @db.Decimal(10, 2)
 
-  description      String?
-  isActive         Boolean   @default(true)
+  description String?
+  isActive    Boolean @default(true)
 
   sourceDesignerId Int?
   sourceDesigner   Designer? @relation(fields: [sourceDesignerId], references: [id])
 
-  images           FabricImage[]
-  wishlistItems    WishlistItem[]
+  images        FabricImage[]
+  wishlistItems WishlistItem[]
 
-  createdAt        DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([providerName])
   @@index([sourceDesignerId])
@@ -97,7 +94,7 @@ model FabricImage {
   description String?
   createdAt   DateTime @default(now())
 
-  fabric      Fabric   @relation(fields: [fabricId], references: [id])
+  fabric Fabric @relation(fields: [fabricId], references: [id])
 
   @@index([fabricId])
 }
@@ -116,16 +113,19 @@ model Order {
 }
 
 model Conversation {
-  id         Int                  @id @default(autoincrement())
+  id         Int                   @id @default(autoincrement())
   customerId Int?
-  platform   String?              @db.VarChar(50)
-  startedAt  DateTime             @default(now())
-  status     String               @default("open") @db.VarChar(50)
-
-  customer   Customer?            @relation(fields: [customerId], references: [id])
+  platform   String?               @db.VarChar(50)
+  externalId String?               @db.VarChar(255)
+  startedAt  DateTime              @default(now())
+  status     String                @default("open") @db.VarChar(50)
+  customer   Customer?             @relation(fields: [customerId], references: [id])
   messages   ConversationMessage[]
 
+  @@unique([platform, externalId])
   @@index([customerId])
+  @@index([platform])
+  @@index([externalId])
 }
 
 model Competitor {
@@ -140,30 +140,30 @@ model Competitor {
 }
 
 model Trend {
-  id           Int                @id @default(autoincrement())
-  name         String             @db.VarChar(150)
-  category     String?            @db.VarChar(100)
-  description  String?
-  createdAt    DateTime           @default(now())
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(150)
+  category    String?  @db.VarChar(100)
+  description String?
+  createdAt   DateTime @default(now())
 
   observations TrendObservation[]
 }
 
 model TrendObservation {
-  id          Int       @id @default(autoincrement())
-  trendId     Int
+  id      Int @id @default(autoincrement())
+  trendId Int
 
-  market      String?   @db.VarChar(100)
-  segment     String?   @db.VarChar(100)
-  garmentType String?   @db.VarChar(100)
-  signal      String?   @db.VarChar(100)
+  market      String? @db.VarChar(100)
+  segment     String? @db.VarChar(100)
+  garmentType String? @db.VarChar(100)
+  signal      String? @db.VarChar(100)
   evidence    String?
-  source      String?   @db.VarChar(500)
+  source      String? @db.VarChar(500)
 
-  observedAt  DateTime  @default(now())
-  confidence  Float?
+  observedAt DateTime @default(now())
+  confidence Float?
 
-  trend       Trend     @relation(fields: [trendId], references: [id])
+  trend Trend @relation(fields: [trendId], references: [id])
 
   @@index([trendId])
   @@index([market])
@@ -184,32 +184,239 @@ model Opportunity {
   @@index([priority])
 }
 
+model ResearchJob {
+  id          Int       @id @default(autoincrement())
+  topic       String    @db.VarChar(200)
+  scope       String?
+  market      String?   @db.VarChar(100)
+  segment     String?   @db.VarChar(100)
+  category    String?   @db.VarChar(100)
+  geography   String?   @db.VarChar(100)
+  timeRange   String?   @db.VarChar(100)
+  summary     String?
+  asOf        DateTime?
+  status      String    @default("running") @db.VarChar(50)
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  sources      ResearchSource[]
+  observations ResearchObservation[]
+
+  @@index([market])
+  @@index([segment])
+  @@index([category])
+  @@index([geography])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ResearchSource {
+  id            Int       @id @default(autoincrement())
+  researchJobId Int
+  title         String?
+  url           String    @db.VarChar(1000)
+  sourceType    String    @db.VarChar(50)
+  publisher     String?   @db.VarChar(200)
+  author        String?   @db.VarChar(200)
+  publishedAt   DateTime?
+  observedAt    DateTime  @default(now())
+  notes         String?
+
+  researchJob  ResearchJob                 @relation(fields: [researchJobId], references: [id])
+  observations ResearchObservationSource[]
+
+  @@unique([researchJobId, url])
+  @@index([researchJobId])
+  @@index([sourceType])
+  @@index([publishedAt])
+  @@index([observedAt])
+}
+
+model ResearchObservation {
+  id            Int     @id @default(autoincrement())
+  researchJobId Int
+  type          String  @db.VarChar(100)
+  subject       String  @db.VarChar(200)
+  statement     String
+  evidence      String?
+  market        String? @db.VarChar(100)
+  segment       String? @db.VarChar(100)
+  category      String? @db.VarChar(100)
+
+  sourceQuality     Float?
+  directness        Float?
+  recencyScore      Float?
+  independenceScore Float?
+
+  confidence     Float?
+  signalStrength Float?
+
+  observedAt DateTime @default(now())
+
+  researchJob ResearchJob                 @relation(fields: [researchJobId], references: [id])
+  sources     ResearchObservationSource[]
+
+  @@index([researchJobId])
+  @@index([type])
+  @@index([subject])
+  @@index([market])
+  @@index([segment])
+  @@index([category])
+  @@index([observedAt])
+}
+
+model ResearchObservationSource {
+  researchObservationId Int
+  researchSourceId      Int
+
+  observation ResearchObservation @relation(fields: [researchObservationId], references: [id])
+  source      ResearchSource      @relation(fields: [researchSourceId], references: [id])
+
+  @@id([researchObservationId, researchSourceId])
+  @@index([researchSourceId])
+}
+
 model WishlistItem {
-  id              Int       @id @default(autoincrement())
+  id              Int      @id @default(autoincrement())
   customerId      Int
   fabricId        Int?
   description     String?
-  requestedMeters Decimal?  @db.Decimal(10, 2)
-  status          String    @default("active") @db.VarChar(50)
+  requestedMeters Decimal? @db.Decimal(10, 2)
+  status          String   @default("active") @db.VarChar(50)
   notes           String?
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime @default(now())
 
-  customer        Customer  @relation(fields: [customerId], references: [id])
-  fabric          Fabric?   @relation(fields: [fabricId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+  fabric   Fabric?  @relation(fields: [fabricId], references: [id])
 
   @@index([customerId])
   @@index([status])
 }
-model ConversationMessage {
-  id             Int          @id @default(autoincrement())
-  conversationId Int
-  role           String       @db.VarChar(30)
-  content        String?
-  imageUrl       String?
-  createdAt      DateTime     @default(now())
 
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
+model ConversationMessage {
+  id                Int          @id @default(autoincrement())
+  conversationId    Int
+  role              String       @db.VarChar(30)
+  content           String?
+  imageUrl          String?
+  externalMessageId String?      @unique @db.VarChar(255)
+  createdAt         DateTime     @default(now())
+  conversation      Conversation @relation(fields: [conversationId], references: [id])
 
   @@index([conversationId])
   @@index([createdAt])
+}
+
+model ClassroomSession {
+  id            Int                     @id @default(autoincrement())
+  title         String                  @db.VarChar(200)
+  mode          String                  @db.VarChar(50)
+  status        String                  @default("active") @db.VarChar(50)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  messages      ClassroomMessage[]
+  codeProposals ClassroomCodeProposal[]
+  gitCommits    ClassroomGitCommit[]
+
+  @@index([mode])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ClassroomGitCommit {
+  id            Int       @id @default(autoincrement())
+  sessionId     Int?
+  branchName    String    @db.VarChar(200)
+  commitSha     String    @db.VarChar(100)
+  commitMessage String    @db.VarChar(200)
+  status        String    @default("committed") @db.VarChar(50)
+  pushedAt      DateTime?
+  prUrl         String?   @db.VarChar(1000)
+  createdAt     DateTime  @default(now())
+
+  session ClassroomSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([branchName])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ClassroomCodeProposal {
+  id           Int      @id @default(autoincrement())
+  sessionId    Int?
+  title        String   @db.VarChar(200)
+  filePath     String   @db.VarChar(500)
+  rationale    String
+  proposedCode String?
+  diff         String?
+  status       String   @default("proposed") @db.VarChar(50)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  session ClassroomSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ClassroomMessage {
+  id        Int      @id @default(autoincrement())
+  sessionId Int
+  role      String   @db.VarChar(50)
+  content   String
+  createdAt DateTime @default(now())
+
+  session ClassroomSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+model ClassroomLesson {
+  id        Int      @id @default(autoincrement())
+  title     String   @db.VarChar(200)
+  category  String?  @db.VarChar(100)
+  content   String
+  source    String?  @db.VarChar(200)
+  status    String   @default("approved") @db.VarChar(50)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ClassroomInsight {
+  id              Int                                   @id @default(autoincrement())
+  type            String                                @db.VarChar(100)
+  subject         String                                @db.VarChar(200)
+  statement       String
+  evidence        String?
+  sourceType      String                                @db.VarChar(50)
+  sourceRef       String?                               @db.VarChar(255)
+  confidence      Float?
+  status          String                                @default("proposed") @db.VarChar(50)
+  createdAt       DateTime                              @default(now())
+  updatedAt       DateTime                              @updatedAt
+  customerSources ClassroomInsightCustomerObservation[] @relation("InsightToCustomerObservation")
+
+  @@index([type])
+  @@index([subject])
+  @@index([sourceType])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ClassroomInsightCustomerObservation {
+  insightId             Int
+  customerObservationId Int
+
+  insight             ClassroomInsight    @relation("InsightToCustomerObservation", fields: [insightId], references: [id], onDelete: Cascade)
+  customerObservation CustomerObservation @relation("CustomerObservationToInsight", fields: [customerObservationId], references: [id], onDelete: Cascade)
+
+  @@id([insightId, customerObservationId])
+  @@index([customerObservationId])
 }
