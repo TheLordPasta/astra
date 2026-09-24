@@ -1,28 +1,25 @@
 import "dotenv/config";
 
 import { readFile } from "node:fs/promises";
+
 import Fastify from "fastify";
 
 import {
   createClassroomSession,
   getClassroomInsights,
   getClassroomLessons,
+  getClassroomSession,
   getRecentClassroomSessions,
 } from "./classroomDb.js";
 
 import { sendClassroomMessage } from "./classroom.js";
-
-import {
-  CLASSROOM_MODES,
-  isClassroomMode,
-  type ClassroomMode,
-} from "./classroomTypes.js";
 
 const app = Fastify({
   logger: true,
 });
 
 const port = Number(process.env.CLASSROOM_PORT ?? "3010");
+
 const classroomKey = process.env.CLASSROOM_KEY;
 
 if (!classroomKey) {
@@ -39,10 +36,15 @@ function authorize(request: {
   return key === classroomKey;
 }
 
-// Serve only these public UI assets; no filesystem paths come from requests.
-// Session data and all actions still use the authenticated API below.
+// Serve only these public UI assets.
+// Session data and actions still use the authenticated API below.
+
 const uiAssets = [
-  { route: "/", file: "index.html", type: "text/html; charset=utf-8" },
+  {
+    route: "/",
+    file: "index.html",
+    type: "text/html; charset=utf-8",
+  },
   {
     route: "/classroom.css",
     file: "classroom.css",
@@ -57,6 +59,7 @@ const uiAssets = [
 
 for (const asset of uiAssets) {
   const url = new URL(`./ui/${asset.file}`, import.meta.url);
+
   app.get(asset.route, async (_request, reply) => {
     return reply
       .header("Cache-Control", "no-store")
@@ -73,36 +76,35 @@ for (const asset of uiAssets) {
 
 app.get("/api/sessions", async (request, reply) => {
   if (!authorize(request)) {
-    return reply.code(401).send({ error: "Unauthorized" });
+    return reply.code(401).send({
+      error: "Unauthorized",
+    });
   }
 
   const sessions = await getRecentClassroomSessions();
 
-  return sessions;
+  return reply.send(sessions);
 });
 
 app.post<{
   Body: {
     title?: string;
-    mode?: string;
   };
 }>("/api/sessions", async (request, reply) => {
   if (!authorize(request)) {
-    return reply.code(401).send({ error: "Unauthorized" });
-  }
-
-  const title = request.body.title?.trim() || "Classroom session";
-  const mode = request.body.mode?.trim() || "";
-
-  if (!isClassroomMode(mode)) {
-    return reply.code(400).send({
-      error: `Invalid Classroom mode. Use one of: ${CLASSROOM_MODES.join(", ")}`,
+    return reply.code(401).send({
+      error: "Unauthorized",
     });
   }
 
+  const title = request.body.title?.trim() || "Classroom session";
+
   const session = await createClassroomSession({
     title,
-    mode,
+
+    // Legacy database field only.
+    // It no longer controls Mush Mush's behavior or available tools.
+    mode: "TEACH",
   });
 
   return reply.send(session);
@@ -114,7 +116,9 @@ app.get<{
   };
 }>("/api/sessions/:id", async (request, reply) => {
   if (!authorize(request)) {
-    return reply.code(401).send({ error: "Unauthorized" });
+    return reply.code(401).send({
+      error: "Unauthorized",
+    });
   }
 
   const sessionId = Number(request.params.id);
@@ -125,9 +129,7 @@ app.get<{
     });
   }
 
-  const session = await import("./classroomDb.js").then(
-    ({ getClassroomSession }) => getClassroomSession(sessionId),
-  );
+  const session = await getClassroomSession(sessionId);
 
   if (!session) {
     return reply.code(404).send({
@@ -142,28 +144,24 @@ app.post<{
   Params: {
     id: string;
   };
+
   Body: {
-    mode?: string;
     message?: string;
   };
 }>("/api/sessions/:id/messages", async (request, reply) => {
   if (!authorize(request)) {
-    return reply.code(401).send({ error: "Unauthorized" });
+    return reply.code(401).send({
+      error: "Unauthorized",
+    });
   }
 
   const sessionId = Number(request.params.id);
-  const mode = request.body.mode?.trim() || "";
+
   const message = request.body.message?.trim() || "";
 
   if (!Number.isInteger(sessionId) || sessionId <= 0) {
     return reply.code(400).send({
       error: "Invalid session ID.",
-    });
-  }
-
-  if (!isClassroomMode(mode)) {
-    return reply.code(400).send({
-      error: "Invalid Classroom mode.",
     });
   }
 
@@ -189,7 +187,9 @@ app.post<{
 
 app.get("/api/lessons", async (request, reply) => {
   if (!authorize(request)) {
-    return reply.code(401).send({ error: "Unauthorized" });
+    return reply.code(401).send({
+      error: "Unauthorized",
+    });
   }
 
   return reply.send(await getClassroomLessons());
@@ -197,7 +197,9 @@ app.get("/api/lessons", async (request, reply) => {
 
 app.get("/api/insights", async (request, reply) => {
   if (!authorize(request)) {
-    return reply.code(401).send({ error: "Unauthorized" });
+    return reply.code(401).send({
+      error: "Unauthorized",
+    });
   }
 
   return reply.send(await getClassroomInsights());
