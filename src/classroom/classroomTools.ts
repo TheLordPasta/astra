@@ -249,56 +249,40 @@ const learnFromCustomerConversationsTool = {
   },
 };
 
-export function getClassroomTools(mode: ClassroomMode) {
-  const tools = [];
+export function getClassroomTools() {
+  return [
+    // Teaching
+    saveClassroomLessonTool,
 
-  if (mode === "TEACH") {
-    tools.push(researchMemoryTool, saveClassroomLessonTool);
-  }
+    // Customer learning
+    learnFromCustomerConversationsTool,
+    searchCustomerLearningTool,
 
-  if (mode === "LEARN") {
-    tools.push(
-      learnFromCustomerConversationsTool,
-      searchCustomerLearningTool,
-      proposeClassroomInsightTool,
-      approveClassroomInsightTool,
-    );
-  }
+    // Research
+    researchMemoryTool,
+    marketResearchTool,
 
-  if (mode === "RESEARCH") {
-    tools.push(
-      researchMemoryTool,
-      marketResearchTool,
-      proposeClassroomInsightTool,
-      approveClassroomInsightTool,
-    );
-  }
+    // Insights
+    proposeClassroomInsightTool,
+    approveClassroomInsightTool,
 
-  if (mode === "DEVELOPER") {
-    tools.push(
-      listProjectFilesTool,
-      readProjectFileTool,
+    // Developer inspection
+    listProjectFilesTool,
+    readProjectFileTool,
+    saveCodeProposalTool,
+    approveCodeProposalTool,
 
-      createBaselineCommitTool,
-      createDeveloperBranchTool,
-      writeProjectFileTool,
-      deleteProjectFileTool,
-
-      runDeveloperCheckTool,
-      developerGitStateTool,
-
-      saveCodeProposalTool,
-      approveCodeProposalTool,
-
-      commitDeveloperChangesTool,
-      pushDeveloperBranchTool,
-      createPullRequestTool,
-
-      researchMemoryTool,
-    );
-  }
-
-  return tools;
+    // Developer Git / write tools
+    createBaselineCommitTool,
+    createDeveloperBranchTool,
+    writeProjectFileTool,
+    deleteProjectFileTool,
+    runDeveloperCheckTool,
+    developerGitStateTool,
+    commitDeveloperChangesTool,
+    pushDeveloperBranchTool,
+    createPullRequestTool,
+  ];
 }
 
 export async function executeClassroomTool(

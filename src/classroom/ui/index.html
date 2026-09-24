@@ -14,242 +14,92 @@
         <span class="brand-mark" aria-hidden="true">m<span>・</span></span>
         <p class="eyebrow">CLASSIC TEXTILE / ASTRA</p>
         <h1 id="loginTitle">A space to build<br />better intelligence.</h1>
-        <p class="muted">
-          Your private Mush Mush Classroom.<br />Teach, investigate, and develop
-          with intention.
-        </p>
+        <p class="muted">Your private Mush Mush Classroom.<br />One conversation for teaching, learning, research, and development.</p>
         <label for="key">Classroom key</label>
-        <input
-          id="key"
-          type="password"
-          autocomplete="current-password"
-          required
-          placeholder="Enter your private key"
-        />
-        <button id="loginButton" class="primary" type="submit">
-          Enter workspace <span aria-hidden="true">↗</span>
-        </button>
+        <input id="key" type="password" autocomplete="current-password" required placeholder="Enter your private key" />
+        <button id="loginButton" class="primary" type="submit">Enter workspace <span aria-hidden="true">↗</span></button>
         <p id="loginError" class="error" role="alert"></p>
-        <span class="caption"
-          >Authorized access only · Human-led by design</span
-        >
+        <span class="caption">Authorized access only · Human-led by design</span>
       </form>
     </section>
 
     <div id="app" class="workspace" hidden>
       <aside id="sidebar" class="sidebar" aria-label="Workspace navigation">
-        <a class="brand" href="/" aria-label="Classroom home"
-          ><span class="brand-mark" aria-hidden="true">m<span>・</span></span
-          ><span>Mush Mush<small>CLASSROOM</small></span></a
-        >
-        <button id="newSession" class="new-session" type="button">
-          <span aria-hidden="true">＋</span> New session <kbd>⌘/Ctrl K</kbd>
-        </button>
-        <p class="eyebrow">WORKSPACE MODE</p>
-        <nav id="modes" class="modes" aria-label="Classroom mode">
-          <button type="button" data-mode="TEACH">
-            <span class="mode-icon" aria-hidden="true">◎</span
-            ><span>Teach<small>Shape how I think</small></span>
-          </button>
-          <button type="button" data-mode="LEARN">
-            <span class="mode-icon" aria-hidden="true">◇</span
-            ><span>Learn<small>Find the signal</small></span>
-          </button>
-          <button type="button" data-mode="RESEARCH">
-            <span class="mode-icon" aria-hidden="true">⌕</span
-            ><span>Research<small>Explore with evidence</small></span>
-          </button>
-          <button type="button" data-mode="DEVELOPER">
-            <span class="mode-icon" aria-hidden="true">⌘</span
-            ><span>Developer<small>Build something better</small></span>
-          </button>
-        </nav>
-        <div class="section-heading">
-          <h2 class="eyebrow">RECENT SESSIONS</h2>
-          <span id="sessionCount" class="caption">0</span>
-        </div>
-        <label class="sr-only" for="sessionSearch"
-          >Search recent sessions</label
-        >
-        <input
-          id="sessionSearch"
-          class="search"
-          type="search"
-          placeholder="Search recent sessions…"
-        />
-        <nav id="sessions" class="sessions" aria-label="Recent sessions"></nav>
+        <a class="brand" href="/" aria-label="Classroom home"><span class="brand-mark" aria-hidden="true">m<span>・</span></span><span>Mush Mush<small>CLASSROOM</small></span></a>
+        <button id="newSession" class="new-session" type="button"><span aria-hidden="true">＋</span> New conversation <kbd>⌘/Ctrl K</kbd></button>
+        <p class="caption">Follow the conversation.<br />No modes to choose or switch.</p>
+        <div class="section-heading"><h2 class="eyebrow">RECENT CONVERSATIONS</h2><span id="sessionCount" class="caption">0</span></div>
+        <label class="sr-only" for="sessionSearch">Search recent conversations</label>
+        <input id="sessionSearch" class="search" type="search" placeholder="Search conversations…" />
+        <nav id="sessions" class="sessions" aria-label="Recent conversations"></nav>
         <div class="sidebar-footer">
-          <span class="avatar">CT</span>
-          <div>Classic Textile<small>Private workspace</small></div>
-          <button
-            id="lock"
-            class="icon-button"
-            type="button"
-            aria-label="Lock workspace"
-            title="Lock workspace"
-          >
-            ⏻
-          </button>
+          <span class="avatar">CT</span><div>Classic Textile<small>Private workspace</small></div>
+          <button id="lock" class="icon-button" type="button" aria-label="Lock workspace" title="Lock workspace">⏻</button>
         </div>
       </aside>
 
       <main class="main">
         <header class="topbar">
-          <button
-            id="navigationToggle"
-            class="icon-button mobile-only"
-            type="button"
-            aria-label="Toggle navigation"
-            aria-controls="sidebar"
-            aria-expanded="false"
-          >
-            ☰
-          </button>
+          <button id="navigationToggle" class="icon-button mobile-only" type="button" aria-label="Toggle navigation" aria-controls="sidebar" aria-expanded="false">☰</button>
           <div class="breadcrumb">Astra <span>/</span> Classroom</div>
-          <div class="topbar-actions">
-            <span class="private-badge">Private workspace</span
-            ><button
-              id="contextToggle"
-              class="quiet"
-              type="button"
-              aria-controls="context"
-              aria-expanded="true"
-            >
-              Context panel
-            </button>
-          </div>
+          <div class="topbar-actions"><span class="private-badge">Private workspace</span><button id="contextToggle" class="quiet" type="button" aria-controls="context" aria-expanded="true">Context panel</button></div>
         </header>
-        <section class="session-heading" aria-label="Current session">
-          <div>
-            <p id="modeTitle" class="eyebrow">TEACH</p>
-            <h1 id="sessionTitle">New session</h1>
-          </div>
+        <section class="session-heading" aria-label="Current conversation">
+          <div><p class="eyebrow">ONE CONTINUOUS CONVERSATION</p><h1 id="sessionTitle">Classroom</h1></div>
           <span id="activity" class="status" role="status">Ready</span>
         </section>
         <div id="notice" class="notice" role="alert" hidden></div>
-        <section
-          id="conversation"
-          class="conversation"
-          aria-label="Conversation"
-        >
+        <section id="conversation" class="conversation" aria-label="Conversation">
           <div id="welcome" class="welcome">
             <span class="welcome-symbol" aria-hidden="true">✳</span>
             <p class="eyebrow">THE MUSH MUSH WORKSHOP</p>
-            <h2 id="welcomeTitle">
-              Better intelligence<br />starts with a conversation.
-            </h2>
-            <p id="welcomeDescription" class="muted"></p>
+            <h2>Better intelligence<br />starts with a conversation.</h2>
+            <p class="muted">Teach me a fabric name, ask me to study a topic, investigate a market, or improve the Classroom. I’ll follow the context and ask when something needs clarification.</p>
             <div id="starters" class="starters"></div>
-            <p class="caption">
-              A private workshop. Not a customer conversation.
-            </p>
+            <p class="caption">Just start writing. A conversation is created when you send your first message.</p>
           </div>
-          <div
-            id="messages"
-            class="messages"
-            role="log"
-            aria-label="Session messages"
-            aria-live="polite"
-            aria-relevant="additions"
-          ></div>
+          <div id="messages" class="messages" role="log" aria-label="Conversation messages" aria-live="polite" aria-relevant="additions"></div>
         </section>
         <div class="composer-area">
           <form id="messageForm" class="composer">
             <label class="sr-only" for="input">Message Mush Mush</label>
-            <textarea
-              id="input"
-              rows="3"
-              placeholder="What would you like to work on?"
-              required
-            ></textarea>
+            <textarea id="input" dir="auto" rows="3" placeholder="What would you like to work on?" required></textarea>
             <div class="composer-toolbar">
-              <span id="composerMode" class="mode-chip">Teach</span
-              ><span class="composer-hint caption"
-                >Enter to send · Shift + Enter for a new line</span
-              ><button id="send" class="primary" type="submit">
-                Send <span aria-hidden="true">↑</span>
-              </button>
+              <span class="composer-hint caption">Enter to send · Shift + Enter for a new line</span>
+              <button id="send" class="primary" type="submit">Send <span aria-hidden="true">↑</span></button>
             </div>
           </form>
-          <p class="composer-note caption">
-            Human authority, always. Research runs only when explicitly
-            requested.
-          </p>
+          <p class="composer-note caption">Human authority, always. Fresh research requires your request. Changes are never merged automatically.</p>
         </div>
       </main>
 
       <aside id="context" class="context" aria-label="Workspace context">
         <div class="context-heading">
-          <div>
-            <p class="eyebrow">WORKSPACE CONTEXT</p>
-            <h2>Grounded in evidence.</h2>
-          </div>
-          <button
-            id="refreshContext"
-            class="icon-button"
-            type="button"
-            aria-label="Refresh context"
-            title="Refresh context"
-          >
-            ↻
-          </button>
+          <div><p class="eyebrow">WORKSPACE CONTEXT</p><h2>Grounded in evidence.</h2></div>
+          <button id="refreshContext" class="icon-button" type="button" aria-label="Refresh context" title="Refresh context">↻</button>
         </div>
         <section class="context-card">
-          <p class="eyebrow">CURRENT MODE</p>
-          <h3 id="contextMode">Teach</h3>
-          <p id="modeDescription" class="muted"></p>
-          <div class="boundary">
-            Proposals are not implementation.<br />Human review remains
-            required.
-          </div>
+          <p class="eyebrow">HOW WE WORK</p><h3>Context, not modes.</h3>
+          <p class="muted">Teaching, learning, research, and development can happen in the same thread. After taking action, I report what I did, checked, and left pending.</p>
+          <div class="boundary">Evidence is not automatic truth.<br />Proposed insights need your approval.<br />Code changes stay on a review branch.</div>
         </section>
         <div class="context-tabs" role="group" aria-label="Context collection">
-          <button id="lessonsTab" type="button" aria-pressed="true">
-            Lessons</button
-          ><button id="insightsTab" type="button" aria-pressed="false">
-            Insights
-          </button>
+          <button id="lessonsTab" type="button" aria-pressed="true">Lessons</button><button id="insightsTab" type="button" aria-pressed="false">Insights</button>
         </div>
-        <p id="contextHelp" class="caption">
-          Stored lessons and their approval status. Read-only here.
-        </p>
+        <p id="contextHelp" class="caption">Stored lessons and their approval status. Read-only here.</p>
         <p id="contextStatus" class="caption" role="status"></p>
         <div id="contextItems" class="context-items"></div>
-        <div class="context-footer">
-          <span aria-hidden="true">◇</span> Evidence over assumptions.<br />Progress
-          through human review.
-        </div>
+        <div class="context-footer"><span aria-hidden="true">◇</span>Evidence over assumptions.<br />Progress through human review.</div>
       </aside>
     </div>
 
     <dialog id="sessionDialog" aria-labelledby="dialogTitle">
       <form id="sessionForm" class="session-form">
-        <p class="eyebrow">A FRESH THREAD</p>
-        <h2 id="dialogTitle">New session</h2>
-        <label for="newTitle">Session title</label
-        ><input
-          id="newTitle"
-          maxlength="200"
-          required
-          placeholder="What are we working on?"
-        />
-        <label for="newMode">Workspace mode</label
-        ><select id="newMode">
-          <option value="TEACH">Teach</option>
-          <option value="LEARN">Learn</option>
-          <option value="RESEARCH">Research</option>
-          <option value="DEVELOPER">Developer</option>
-        </select>
-        <p class="caption">
-          Each session keeps its own mode and conversation history.
-        </p>
+        <p class="eyebrow">A FRESH THREAD</p><h2 id="dialogTitle">New conversation</h2>
+        <label for="newTitle">Conversation title</label><input id="newTitle" maxlength="200" required placeholder="What are we working on?" />
+        <p class="caption">Start a separate thread only when you want one. Every conversation supports all Classroom capabilities.</p>
         <p id="sessionError" class="error" role="alert"></p>
-        <div class="dialog-actions">
-          <button id="cancelSession" class="quiet" type="button">Cancel</button
-          ><button id="createSession" class="primary" type="submit">
-            Create session
-          </button>
-        </div>
+        <div class="dialog-actions"><button id="cancelSession" class="quiet" type="button">Cancel</button><button id="createSession" class="primary" type="submit">Create conversation</button></div>
       </form>
     </dialog>
   </body>
