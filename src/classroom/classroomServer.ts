@@ -43,8 +43,16 @@ function authorize(request: {
 // Session data and all actions still use the authenticated API below.
 const uiAssets = [
   { route: "/", file: "index.html", type: "text/html; charset=utf-8" },
-  { route: "/classroom.css", file: "classroom.css", type: "text/css; charset=utf-8" },
-  { route: "/classroom.js", file: "classroom.js", type: "text/javascript; charset=utf-8" },
+  {
+    route: "/classroom.css",
+    file: "classroom.css",
+    type: "text/css; charset=utf-8",
+  },
+  {
+    route: "/app.js",
+    file: "app.js",
+    type: "text/javascript; charset=utf-8",
+  },
 ] as const;
 
 for (const asset of uiAssets) {
