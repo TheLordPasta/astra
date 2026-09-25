@@ -4,7 +4,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "build": "prisma generate && tsc",
+    "build": "prisma generate && tsc && npm run copy:classroom-ui",
+    "copy:classroom-ui": "cpx \"src/classroom/ui/**/*\" dist/classroom/ui",
     "start": "node dist/server/server.js",
     "start:classroom": "node dist/classroom/classroomServer.js",
     "test": "echo \"Error: no test specified\" && exit 1",
