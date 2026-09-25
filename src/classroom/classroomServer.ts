@@ -18,7 +18,7 @@ const app = Fastify({
   logger: true,
 });
 
-const port = Number(process.env.CLASSROOM_PORT ?? "3010");
+const port = Number(process.env.PORT ?? process.env.CLASSROOM_PORT ?? "3010");
 
 const classroomKey = process.env.CLASSROOM_KEY;
 
@@ -207,9 +207,9 @@ app.get("/api/insights", async (request, reply) => {
 
 app
   .listen({
-    host: "127.0.0.1",
+    host: "0.0.0.0",
     port,
   })
   .then(() => {
-    console.log(`Mush Mush Classroom running at http://127.0.0.1:${port}`);
+    console.log(`Mush Mush Classroom running on 0.0.0.0:${port}`);
   });
