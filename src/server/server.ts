@@ -19,7 +19,7 @@ async function start() {
       host,
     });
 
-    console.log(`Astra server running on http://localhost:${port}`);
+    console.log(`MushMush server running on ${host}:${port}`);
   } catch (error) {
     console.error("Failed to start Astra server:");
     console.error(error);
