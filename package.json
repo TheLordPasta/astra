@@ -8,7 +8,7 @@
     "copy:classroom-ui": "cpx \"src/classroom/ui/**/*\" dist/classroom/ui",
     "start": "node dist/server/server.js",
     "start:classroom": "node dist/classroom/classroomServer.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "tsc --noEmit 1>&2 && tsx --test src/ai/classroomKnowledge.test.ts src/ai/classroomKnowledge.integration.test.ts",
     "postinstall": "prisma skills sync || exit 0"
   },
   "keywords": [],

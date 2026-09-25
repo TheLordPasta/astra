@@ -384,6 +384,9 @@ model ClassroomLesson {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Human-reviewed public wording. NULL means internal only; approval does not publish.
+  customerFacingText String?
+
   @@index([category])
   @@index([status])
   @@index([createdAt])
@@ -402,6 +405,9 @@ model ClassroomInsight {
   createdAt       DateTime                              @default(now())
   updatedAt       DateTime                              @updatedAt
   customerSources ClassroomInsightCustomerObservation[] @relation("InsightToCustomerObservation")
+
+  /// Human-reviewed public wording. NULL means internal only; approval does not publish.
+  customerFacingText String?
 
   @@index([type])
   @@index([subject])
