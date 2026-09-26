@@ -1,6 +1,7 @@
 import "dotenv/config";
 import Fastify from "fastify";
 
+import { registerFacebookAuth } from "../instagram/facebookAuth.js";
 import { registerInstagramWebhook } from "../instagram/instagramWebhook.js";
 
 const app = Fastify({
@@ -8,6 +9,7 @@ const app = Fastify({
 });
 
 registerInstagramWebhook(app);
+registerFacebookAuth(app);
 
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "0.0.0.0";
