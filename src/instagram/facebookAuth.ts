@@ -129,6 +129,17 @@ export function registerFacebookAuth(app: FastifyInstance) {
 
     const tokenData = (await tokenResponse.json()) as FacebookTokenResponse;
 
+    const permissionsUrl = new URL(
+      `https://graph.facebook.com/${graphVersion}/me/permissions`,
+    );
+
+    permissionsUrl.searchParams.set("access_token", tokenData.access_token);
+
+    const permissionsResponse = await fetch(permissionsUrl);
+    const permissions = await permissionsResponse.json();
+
+    console.log("Facebook granted permissions:", permissions);
+
     if (!tokenResponse.ok || !tokenData.access_token) {
       console.error("Facebook OAuth token exchange failed");
 
