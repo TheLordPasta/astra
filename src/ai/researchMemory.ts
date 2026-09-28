@@ -108,10 +108,30 @@ function calculateConfidence(data: {
   );
 }
 
+// Opt-in ceiling: storage must not raise cautious visual confidence.
+// Existing market research retains its original scoring by default.
+export function researchConfidence(scored: number, finding: number, capToFinding: boolean): number {
+  return capToFinding ? Math.min(scored, Math.max(0, Math.min(1, finding))) : scored;
+}
+
+// Narrow repository boundary supports offline persistence tests, without mocking Prisma proxies.
+export interface ResearchReportStore {
+  createResearchJob(data: Parameters<typeof createResearchJob>[0]): Promise<{ id: number }>;
+  addResearchSource(data: Parameters<typeof addResearchSource>[0]): Promise<{ id: number }>;
+  addResearchObservation(data: Parameters<typeof addResearchObservation>[0]): Promise<unknown>;
+  completeResearchJob(id: number): Promise<unknown>;
+  failResearchJob(id: number): Promise<unknown>;
+}
+const defaultStore: ResearchReportStore = {
+  createResearchJob, addResearchSource, addResearchObservation, completeResearchJob, failResearchJob,
+};
+
 export async function saveResearchReport(
   report: ResearchReport,
+  options: { capConfidenceToFinding?: boolean } = {},
+  store: ResearchReportStore = defaultStore,
 ): Promise<number> {
-  const researchJob = await createResearchJob({
+  const researchJob = await store.createResearchJob({
     topic: report.topic,
     scope: report.scope,
     market: report.market,
@@ -127,7 +147,7 @@ export async function saveResearchReport(
     const sourceIdByUrl = new Map<string, number>();
 
     for (const source of report.sources) {
-      const storedSource = await addResearchSource({
+      const storedSource = await store.addResearchSource({
         researchJobId: researchJob.id,
         title: source.title,
         url: source.url,
@@ -139,9 +159,9 @@ export async function saveResearchReport(
     }
 
     for (const finding of report.findings) {
-      const sourceIds = finding.sourceUrls
+      const sourceIds = [...new Set(finding.sourceUrls
         .map((url) => sourceIdByUrl.get(url))
-        .filter((id): id is number => typeof id === "number");
+        .filter((id): id is number => typeof id === "number"))];
 
       const sourceQualityValues = sourceIds.map((sourceId) => {
         const source = report.sources.find(
@@ -167,14 +187,14 @@ export async function saveResearchReport(
 
       const independenceScore = calculateIndependenceScore(finding.sourceUrls);
 
-      const confidence = calculateConfidence({
+      const confidence = researchConfidence(calculateConfidence({
         sourceQuality,
         directness,
         recencyScore,
         independenceScore,
-      });
+      }), finding.confidence, options.capConfidenceToFinding === true);
 
-      await addResearchObservation({
+      await store.addResearchObservation({
         researchJobId: researchJob.id,
         type: finding.type,
         subject: finding.subject,
@@ -195,11 +215,11 @@ export async function saveResearchReport(
       });
     }
 
-    await completeResearchJob(researchJob.id);
+    await store.completeResearchJob(researchJob.id);
 
     return researchJob.id;
   } catch (error) {
-    await failResearchJob(researchJob.id);
+    await store.failResearchJob(researchJob.id);
     throw error;
   }
 }
