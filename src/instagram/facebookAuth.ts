@@ -4,7 +4,6 @@ import crypto from "node:crypto";
 import {
   getPageInstagramConnection,
   getInstagramAccount,
-  discoverInstagramBusiness,
 } from "./instagramGraphClient.js";
 
 const appId = process.env.META_APP_ID ?? "";
@@ -157,11 +156,6 @@ export function registerFacebookAuth(app: FastifyInstance) {
 
       const instagramAccount = await getInstagramAccount(
         connection.instagramBusinessAccountId,
-        connection.pageAccessToken,
-      );
-      const discovered = await discoverInstagramBusiness(
-        connection.instagramBusinessAccountId,
-        "alonlivne",
         connection.pageAccessToken,
       );
 
