@@ -1,19 +1,30 @@
 import type { FastifyInstance } from "fastify";
 import crypto from "node:crypto";
 
+import {
+  getPageInstagramConnection,
+  getInstagramAccount,
+} from "./instagramGraphClient.js";
+
 const appId = process.env.META_APP_ID ?? "";
 const appSecret = process.env.META_APP_SECRET ?? "";
 const redirectUri = process.env.META_FACEBOOK_REDIRECT_URI ?? "";
 const graphVersion = process.env.META_GRAPH_API_VERSION ?? "v24.0";
 const stateSecret = process.env.META_OAUTH_STATE_SECRET ?? "";
-const testPageId = process.env.META_TEST_PAGE_ID ?? "";
 
 function assertFacebookConfig() {
-  if (!appId) throw new Error("META_APP_ID is missing");
-  if (!appSecret) throw new Error("META_APP_SECRET is missing");
+  if (!appId) {
+    throw new Error("META_APP_ID is missing");
+  }
+
+  if (!appSecret) {
+    throw new Error("META_APP_SECRET is missing");
+  }
+
   if (!redirectUri) {
     throw new Error("META_FACEBOOK_REDIRECT_URI is missing");
   }
+
   if (!stateSecret) {
     throw new Error("META_OAUTH_STATE_SECRET is missing");
   }
@@ -53,22 +64,11 @@ interface FacebookTokenResponse {
   access_token?: string;
   token_type?: string;
   expires_in?: number;
-  error?: unknown;
-}
-
-interface FacebookPage {
-  id: string;
-  name: string;
-  access_token?: string;
-  tasks?: string[];
-  instagram_business_account?: {
-    id: string;
+  error?: {
+    message?: string;
+    type?: string;
+    code?: number;
   };
-}
-
-interface FacebookPagesResponse {
-  data?: FacebookPage[];
-  error?: unknown;
 }
 
 export function registerFacebookAuth(app: FastifyInstance) {
@@ -125,7 +125,6 @@ export function registerFacebookAuth(app: FastifyInstance) {
       });
     }
 
-    // Exchange OAuth code for Facebook user access token
     const tokenUrl = new URL(
       `https://graph.facebook.com/${graphVersion}/oauth/access_token`,
     );
@@ -141,8 +140,8 @@ export function registerFacebookAuth(app: FastifyInstance) {
 
     if (!tokenResponse.ok || !tokenData.access_token) {
       console.error(
-        "Facebook OAuth token exchange failed",
-        tokenData.error ?? "unknown error",
+        "Facebook OAuth token exchange failed:",
+        tokenData.error?.message ?? "unknown error",
       );
 
       return reply.code(502).send({
@@ -152,85 +151,31 @@ export function registerFacebookAuth(app: FastifyInstance) {
 
     const userAccessToken = tokenData.access_token;
 
-    // Check which permissions Meta actually granted
-    const permissionsUrl = new URL(
-      `https://graph.facebook.com/${graphVersion}/me/permissions`,
-    );
+    try {
+      const connection = await getPageInstagramConnection(userAccessToken);
 
-    permissionsUrl.searchParams.set("access_token", userAccessToken);
-
-    const permissionsResponse = await fetch(permissionsUrl);
-
-    const permissions = await permissionsResponse.json();
-
-    console.log("Facebook granted permissions:", permissions);
-
-    // TEMPORARY TEST:
-    // Directly query the known MushMush Facebook Page.
-    // We intentionally do NOT request/log the Page access token here.
-    let directPageLookup: unknown = null;
-
-    if (testPageId) {
-      const pageUrl = new URL(
-        `https://graph.facebook.com/${graphVersion}/${testPageId}`,
+      const instagramAccount = await getInstagramAccount(
+        connection.instagramBusinessAccountId,
+        connection.pageAccessToken,
       );
 
-      pageUrl.searchParams.set("fields", "id,name,instagram_business_account");
+      return reply.send({
+        connected: true,
 
-      pageUrl.searchParams.set("access_token", userAccessToken);
+        page: {
+          id: connection.pageId,
+          name: connection.pageName,
+        },
 
-      const pageResponse = await fetch(pageUrl);
-
-      directPageLookup = await pageResponse.json();
-
-      console.log("Specific Page lookup:", directPageLookup);
-    }
-
-    // Normal Page enumeration
-    const pagesUrl = new URL(
-      `https://graph.facebook.com/${graphVersion}/me/accounts`,
-    );
-
-    pagesUrl.searchParams.set(
-      "fields",
-      [
-        "id",
-        "name",
-        "tasks",
-        "access_token",
-        "instagram_business_account",
-      ].join(","),
-    );
-
-    pagesUrl.searchParams.set("access_token", userAccessToken);
-
-    const pagesResponse = await fetch(pagesUrl);
-
-    const pages = (await pagesResponse.json()) as FacebookPagesResponse;
-
-    if (!pagesResponse.ok) {
-      console.error(
-        "Facebook Page lookup failed",
-        pages.error ?? "unknown error",
-      );
+        instagram: instagramAccount,
+      });
+    } catch (error) {
+      console.error("Instagram Graph connection failed:", error);
 
       return reply.code(502).send({
-        error: "Facebook Page lookup failed",
+        error: "Instagram Graph connection failed",
+        message: error instanceof Error ? error.message : "Unknown error",
       });
     }
-
-    const safePages = (pages.data ?? []).map((page) => ({
-      id: page.id,
-      name: page.name,
-      tasks: page.tasks ?? [],
-      instagramBusinessAccountId: page.instagram_business_account?.id ?? null,
-      hasPageAccessToken: Boolean(page.access_token),
-    }));
-
-    return reply.send({
-      connected: true,
-      pages: safePages,
-      directPageLookup,
-    });
   });
 }
