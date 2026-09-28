@@ -160,3 +160,54 @@ export async function getInstagramMedia(
     ].join(","),
   );
 }
+
+export interface InstagramBusinessDiscoveryProfile {
+  id?: string;
+  username?: string;
+  name?: string;
+  biography?: string;
+  website?: string;
+  profile_picture_url?: string;
+  followers_count?: number;
+  follows_count?: number;
+  media_count?: number;
+
+  media?: {
+    data?: InstagramGraphMedia[];
+  };
+}
+
+export async function discoverInstagramBusiness(
+  ourInstagramBusinessAccountId: string,
+  targetUsername: string,
+  pageAccessToken: string,
+): Promise<InstagramBusinessDiscoveryProfile> {
+  const fields = [
+    `business_discovery.username(${targetUsername}){`,
+    [
+      "id",
+      "username",
+      "name",
+      "biography",
+      "website",
+      "profile_picture_url",
+      "followers_count",
+      "follows_count",
+      "media_count",
+      "media.limit(5){id,caption,media_type,permalink,timestamp}",
+    ].join(","),
+    "}",
+  ].join("");
+
+  const result = await graphRequest<{
+    business_discovery?: InstagramBusinessDiscoveryProfile;
+  }>(`/${ourInstagramBusinessAccountId}`, pageAccessToken, fields);
+
+  if (!result.business_discovery) {
+    throw new Error(
+      `No Business Discovery data returned for @${targetUsername}`,
+    );
+  }
+
+  return result.business_discovery;
+}
