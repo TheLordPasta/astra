@@ -1,24 +1,21 @@
 # Classroom agent-loop resilience
 
-## Phase 1: inspected baseline
-Baseline: clean detached HEAD 6f9672f; development branch mushmush/classroom-agent-loop-safety.
-Only runtime resilience is in scope. No Instagram/video/trend/handoff changes.
+Scope: runtime only. Branch mushmush/classroom-agent-loop-safety from clean 6f9672f.
 
-Inspected classroom.ts -> classroomRuntime.ts -> safeToolCall in runtimeSafety.ts -> executeClassroomTool in classroomTools.ts -> developer dispatchers and runDeveloperCheck in classroomGit.ts. Inspected classroomHttp.ts, ui/apiClient.js, existing runtime/transport tests, and package.json.
+## Phase 1 — inspection (pushed c7ce955)
+Path: classroom.ts -> classroomRuntime.ts -> runtimeSafety.safeToolCall -> classroomTools -> developer/Git dispatchers. UI: classroomHttp.ts -> ui/apiClient.js.
+Inspected those sources, classroomDeveloperTools.ts, package.json and existing runtime/transport tests.
+runDeveloperCheck already returns {check,success:true,output:""} for silent success. Lessons are serialized, not parsed here; no evidence of broken lessons. Legacy argument JSON.parse calls are behind safeToolCall argument validation. Dispatcher exceptions are sanitized at the outer boundary. UI JSON.parse is already guarded. SDK decoding is inside atStage.
+Loop had 40 rounds but no total call/deadline/operation bounds or preservation callback. Last-turn generation depended on a further model request.
 
-Findings:
-- runDeveloperCheck already returns {check, success:true, output:""} for a silent successful compiler. Empty stdout is NOT an empty tool response.
-- Lessons are JSON.stringify'd into instructions; no evidence of malformed lessons.
-- Tool argument JSON.parse sites in classroomTools.ts, classroomDeveloperTools.ts and classroomGit.ts sit behind safeToolCall argument validation; legacy dispatcher catches lose failure stages and sometimes retain raw error messages.
-- safeToolCall checks serialized results but permits arbitrary JSON primitives/arrays, and the exported dispatcher itself lacks the same normalized contract.
-- UI apiClient.js already reads text and guards JSON.parse. classroomHttp.ts already catches route exceptions. OpenAI SDK decoding happens inside atStage, not response.json in the agent loop.
-- Loop has 40 rounds but no total call limit, deadline, per-operation timeout or preservation callback. Final generation relies on another provider response. No correlation diagnostics for successful intermediate stages.
-- Existing tests reproduce empty/truncated HTTP JSON, but do not establish the cause of the intermittent production incident. No production root-cause claim is justified.
+## Phase 2 — defensive boundaries
+runtimeSafety.ts now always supplies structured object success envelopes (arrays in output); rejects primitives/null/empty/malformed serialized results; preserves exact successful compiler envelope with empty stdout. Added duplicate/blank call-ID validation and string model-response guards. HTTP failure takes precedence over empty/broken error body; timeout classification includes SDK timeout errors.
+modelTransport.ts adds bounded non-streaming HTTP JSON decoding before the SDK, status-before-body handling, an 8 MiB response ceiling, stage-specific failures and original-cause capture. Integration into the model loop follows in phase 3.
+Validation at this phase: typecheck passed (empty compiler stdout); existing suite 154 passed, 0 failed, 0 skipped. No live provider calls. New targeted regression tests follow in phase 4.
 
-## Planned phases
-2. Normalize tool envelopes, strengthen model transport parsing and sanitized diagnostics.
-3. Bound rounds/calls/time and final generation; best-effort safe checkpoint of this run's validated writes only, never unrelated work; report preservation failures honestly.
-4. Add targeted regression tests.
-5. Run typecheck/tests, review changed sources/diff and record actual results.
+## Remaining phases
+3. Wire guarded transport, bounded loop and safe preservation.
+4. Regression tests for long-loop/finalization and transport failures.
+5. Final validation/source review/diff/report.
 
-No implementation changes or new validation results at phase 1. This report is the inspection checkpoint, not a claim of a completed fix.
+Exact intermittent production cause remains unconfirmed. Existing fixture tests reproduce unguarded empty/truncated JSON failure; silence from a successful compiler is not evidence of bad JSON. No feature work, merge or deployment.

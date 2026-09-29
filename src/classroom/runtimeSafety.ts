@@ -17,7 +17,7 @@ export function normalizeFailure(error: unknown, stage: string): RuntimeFailure 
   const obj = error && typeof error === "object" ? error as Record<string, unknown> : {};
   const status = typeof obj.status === "number" && Number.isInteger(obj.status) && obj.status >= 100 && obj.status <= 599 ? obj.status : undefined;
   const kind: FailureKind = status && status >= 400 ? "http_error" :
-    obj.name === "AbortError" || obj.name === "TimeoutError" || obj.name === "APIUserAbortError" ? "aborted" :
+    ["AbortError", "TimeoutError", "APIUserAbortError", "APIConnectionTimeoutError"].includes(String(obj.name)) ? "aborted" :
     error instanceof SyntaxError ? "invalid_json" : "operation_failed";
   return new RuntimeFailure(stage, kind, status);
 }
@@ -25,15 +25,17 @@ export async function atStage<T>(stage: string, operation: () => Promise<T>): Pr
   try { return await operation(); } catch (error) { throw normalizeFailure(error, stage); }
 }
 export async function readRuntimeJson(response: Response, stage: string): Promise<unknown> {
+  // Classify HTTP failures before attempting to consume an empty/broken error stream.
+  if (!response.ok) {
+    await response.body?.cancel().catch(() => {});
+    throw new RuntimeFailure(stage, "http_error", response.status);
+  }
   const text = await atStage(`${stage}.body`, () => response.text());
-  // HTTP status takes precedence over JSON syntax for proxy/HTML/empty failures.
-  if (!response.ok) throw new RuntimeFailure(stage, "http_error", response.status, text.length);
   return parseRuntimeJson(text, stage);
 }
 export function failureReport(error: unknown, stage: string, log: (record: object) => void = record => console.error(JSON.stringify(record))) {
   const failure = normalizeFailure(error, stage);
   const reference = randomUUID();
-  // Allowlisted metadata only: no raw error messages/stacks, payloads, URLs, headers or arguments.
   log({ event: "classroom_runtime_failure", reference, stage: failure.stage, kind: failure.kind,
     ...(failure.status === undefined ? {} : { status: failure.status }),
     ...(failure.bodyLength === undefined ? {} : { bodyLength: failure.bodyLength }) });
@@ -53,34 +55,44 @@ export interface ModelResponse {
   output_text: string;
 }
 export function validateModelResponse(value: unknown, stage: string): ModelResponse {
+  if (typeof value === "string") value = parseRuntimeJson(value, `${stage}.json`);
   if (!value || typeof value !== "object") throw new RuntimeFailure(stage, "empty_body");
   const response = value as ModelResponse;
   if (response.status && response.status !== "completed") throw new RuntimeFailure(stage, "incomplete_model");
   if (typeof response.id !== "string" || !response.id || !Array.isArray(response.output) || typeof response.output_text !== "string") throw new RuntimeFailure(stage, "invalid_shape");
+  const ids = new Set<string>();
   for (const item of response.output) {
     if (!item || typeof item.type !== "string") throw new RuntimeFailure(stage, "invalid_shape");
-    if (item.type === "function_call" && (typeof item.name !== "string" || typeof item.arguments !== "string" || typeof item.call_id !== "string")) throw new RuntimeFailure(stage, "invalid_shape");
+    if (item.type === "function_call") {
+      if (typeof item.name !== "string" || !item.name || typeof item.arguments !== "string" || typeof item.call_id !== "string" || !item.call_id || ids.has(item.call_id)) throw new RuntimeFailure(stage, "invalid_shape");
+      ids.add(item.call_id);
+    }
   }
   return response;
 }
+export function toolResultEnvelope(result: unknown, stage: string): string {
+  const parsed = parseRuntimeJson(result, `${stage}.result`);
+  if (parsed === null) throw new RuntimeFailure(`${stage}.result`, "empty_body");
+  if (typeof parsed === "object" && !Array.isArray(parsed)) {
+    const record = parsed as Record<string, unknown>;
+    if (record.error || record.success === false || record.status === "failed" || record.status === "aborted") {
+      throw new RuntimeFailure(`${stage}.result`, "tool_failed");
+    }
+    // Preserve the exact silent-success contract (including output: "").
+    if (record.success === true) return result as string;
+    return JSON.stringify({ ...record, success: true });
+  }
+  if (Array.isArray(parsed)) return JSON.stringify({ success: true, output: parsed });
+  throw new RuntimeFailure(`${stage}.result`, "invalid_shape");
+}
 export async function safeToolCall(name: string, raw: string, execute: (name: string, raw: string) => Promise<string>, allowedNames: ReadonlySet<string>): Promise<string> {
-  // Use only registered names in diagnostics, never arbitrary model-provided text.
   const stage = `tool.${allowedNames.has(name) ? name : "unknown"}`;
   try {
     if (!allowedNames.has(name)) throw new RuntimeFailure(stage, "invalid_shape");
     const args = parseRuntimeJson(raw, `${stage}.arguments`);
     if (!args || typeof args !== "object" || Array.isArray(args)) throw new RuntimeFailure(`${stage}.arguments`, "invalid_shape");
     const result = await atStage(`${stage}.execute`, () => execute(name, raw));
-    const parsed = parseRuntimeJson(result, `${stage}.result`);
-    if (parsed === null) throw new RuntimeFailure(`${stage}.result`, "empty_body");
-    if (typeof parsed === "object" && !Array.isArray(parsed)) {
-      const record = parsed as Record<string, unknown>;
-      if (record.error || record.success === false || record.status === "failed" || record.status === "aborted") {
-        // Legacy dispatchers catch exceptions into {error: rawMessage}; never forward those messages.
-        throw new RuntimeFailure(`${stage}.result`, "tool_failed");
-      }
-    }
-    return result;
+    return toolResultEnvelope(result, stage);
   } catch (error) {
     const report = failureReport(error, stage);
     return JSON.stringify({ error: report.message, ...report, success: false });
