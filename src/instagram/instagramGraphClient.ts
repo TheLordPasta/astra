@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { z } from "zod/v4";
+import { atStage, failureReport, parseRuntimeJson, RuntimeFailure } from "../classroom/runtimeSafety.js";
 
 const graphVersion = process.env.META_GRAPH_API_VERSION ?? "v24.0";
 const graphBaseUrl = `https://graph.facebook.com/${graphVersion}`;
@@ -46,18 +47,35 @@ async function graphRequest<T>(path: string, accessToken: string, fields?: strin
   if (!accessToken) throw new InstagramReadError(null, null);
   const url = new URL(`${graphBaseUrl}${path}`);
   if (fields) url.searchParams.set("fields", fields);
+  let status: number | null = null;
   try {
-    const response = await fetcher(url, {
+    const response = await atStage("meta.fetch", () => fetcher(url, {
       method: "GET", redirect: "error", signal: AbortSignal.timeout(20000),
       headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const data = await response.json() as T & { error?: { code?: unknown } };
-    if (!response.ok || data?.error) throw new InstagramReadError(
-      typeof data?.error?.code === "number" ? data.error.code : null, response.status);
-    return data;
+    }));
+    status = response.status;
+    const raw = await atStage("meta.body", () => response.text());
+    let data: unknown;
+    if (!response.ok) {
+      // Preserve HTTP status even if the proxy returned HTML, no data, or truncated JSON.
+      // Read only Meta's numeric error code, needed for the existing unsupported-field fallback.
+      try { data = parseRuntimeJson(raw, "meta.body"); } catch { /* status is authoritative */ }
+      const code = data && typeof data === "object" && "error" in data ? (data.error as { code?: unknown } | null)?.code : undefined;
+      failureReport(new RuntimeFailure("meta.http", "http_error", status, raw.length), "meta.http");
+      throw new InstagramReadError(typeof code === "number" && Number.isFinite(code) ? code : null, status);
+    }
+    data = parseRuntimeJson(raw, "meta.body");
+    if (!data || typeof data !== "object" || Array.isArray(data)) throw new RuntimeFailure("meta.body", "invalid_shape", status, raw.length);
+    if ("error" in data && data.error) {
+      const code = (data.error as { code?: unknown }).code;
+      failureReport(new RuntimeFailure("meta.result", "operation_failed", status), "meta.result");
+      throw new InstagramReadError(typeof code === "number" && Number.isFinite(code) ? code : null, status);
+    }
+    return data as T;
   } catch (error) {
     if (error instanceof InstagramReadError) throw error;
-    throw new InstagramReadError(null, null);
+    failureReport(error, "meta.transport");
+    throw new InstagramReadError(null, status);
   }
 }
 export async function getPageInstagramConnection(userAccessToken: string) {
