@@ -7,3 +7,6 @@ dist/
 coverage/
 
 src/generated/
+
+mushmush_render_deploy
+mushmush_render_deploy.pub
