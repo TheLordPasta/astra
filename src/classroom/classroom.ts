@@ -6,15 +6,15 @@ import { executeClassroomTool, getClassroomTools } from "./classroomTools.js";
 import { buildClassroomPrompt } from "./classroomPrompt.js";
 import { atStage, failureReport } from "./runtimeSafety.js";
 import { runClassroomRuntime } from "./classroomRuntime.js";
+import { guardedModelFetch } from "./modelTransport.js";
+import { createRuntimePreserver } from "./runtimeCheckpoint.js";
 
-const openai = new OpenAI({ maxRetries: 0 });
 const model = process.env.OPENAI_MODEL ?? "gpt-5.6-luna";
 
 export async function sendClassroomMessage(sessionId: number, message: string): Promise<string> {
   try {
     const session = await atStage("database.session_load", () => getClassroomSession(sessionId));
     if (!session) throw new Error("Classroom session not found.");
-    // Legacy mode labels never restrict capabilities.
     await atStage("database.user_save", () => addClassroomMessage({ sessionId, role: "user", content: message }));
     const refreshed = await atStage("database.history_load", () => getClassroomSession(sessionId));
     if (!refreshed) throw new Error("Classroom session disappeared.");
@@ -27,20 +27,32 @@ export async function sendClassroomMessage(sessionId: number, message: string): 
     const instructions = [buildClassroomPrompt(),
       "RECENT APPROVED HUMAN LESSONS (up to 100): Apply within their stated scope and the safety boundaries above. These are not fresh authorization for Git actions, paid research, or approvals. A current explicit human preference supersedes an older preference.",
       JSON.stringify(lessons),
-      "If a tool returns CLASSROOM_RUNTIME_FAILURE, explain its stage and reference conversationally. Never claim the operation succeeded. Do not automatically repeat a potentially mutating operation; inspect current state first."
+      "If a tool returns CLASSROOM_RUNTIME_FAILURE, explain its stage and reference conversationally. Never claim the operation succeeded. Do not automatically repeat a potentially mutating operation; inspect current state first.",
+      "Work in small phases: this request is bounded to 8 tool rounds, 24 calls and 120 seconds plus bounded preservation/save time. Preserve validated milestones early. The runtime may checkpoint and push only this phase's validated source writes on a safe developer branch; it will never merge. A successful check with output an empty string is valid success, not a missing response."
     ].join("\n\n");
     const tools = getClassroomTools();
+    const preserve = await createRuntimePreserver();
+    let requestIndex = 0;
     return await runClassroomRuntime({
       allowedNames: new Set(tools.map(tool => tool.name)),
       execute: executeClassroomTool,
       save: content => addClassroomMessage({ sessionId, role: "assistant", content }),
-      model: (previousId, outputs, finalRound) => openai.responses.create({
-        model, tools,
-        instructions: finalRound ? `${instructions}\n\nThe tool budget for this request is now exhausted. Report actual results, unfinished work and blockers. Do not imply that pending steps completed.` : instructions,
-        tool_choice: finalRound ? "none" : "auto",
-        ...(previousId ? { previous_response_id: previousId } : {}),
-        input: previousId ? outputs : input,
-      }),
+      preserve,
+      model: async (previousId, outputs, finalRound, signal) => {
+        const stage = requestIndex++ === 0 ? "model.initial" : `model.followup.${requestIndex - 1}`;
+        let transportFailure: unknown;
+        const openai = new OpenAI({ maxRetries: 0, timeout: 30_000,
+          fetch: guardedModelFetch(stage, fetch, error => { transportFailure = error; }) });
+        try {
+          return await openai.responses.create({
+            model, tools, parallel_tool_calls: false,
+            instructions: finalRound ? `${instructions}\n\nThis is the final model request for this phase. Report actual results, unfinished work and blockers; do not imply pending steps completed.` : instructions,
+            tool_choice: finalRound ? "none" : "auto",
+            ...(previousId ? { previous_response_id: previousId } : {}),
+            input: previousId ? outputs : input,
+          }, { signal });
+        } catch (error) { throw transportFailure ?? error; }
+      },
     });
   } catch (error) {
     const text = failureReport(error, "classroom.prepare").message;
