@@ -1,3 +1,5 @@
+import { classroomRequest, messageFailureText, uiErrorMessage } from "./apiClient.js";
+
 const state = {
   key: "", sessions: [], currentSession: null, contextTab: "lessons",
   busy: false, epoch: 0, contextRequest: 0,
@@ -16,14 +18,8 @@ async function api(path, options = {}) {
   const headers = new Headers(options.headers || {});
   headers.set("x-classroom-key", state.key);
   if (options.body) headers.set("Content-Type", "application/json");
-  const response = await fetch(path, { ...options, headers });
-  const body = await response.json();
+  const body = await classroomRequest(path, { ...options, headers });
   if (epoch !== state.epoch) throw new Error("Workspace locked.");
-  if (!response.ok) {
-    const error = new Error(body?.error || `Request failed (${response.status}).`);
-    error.status = response.status;
-    throw error;
-  }
   return body;
 }
 
@@ -139,7 +135,7 @@ async function openSession(id) {
     input.value = "";
     activity("Ready");
   } catch (error) {
-    if (epoch === state.epoch) { showNotice(error.message); activity("Error"); }
+    if (epoch === state.epoch) { showNotice(uiErrorMessage(error)); activity("Error"); }
   } finally {
     if (epoch === state.epoch) setBusy(false);
   }
@@ -188,7 +184,7 @@ async function loadContext() {
     renderContextItems(items);
     $("contextStatus").textContent = `${Array.isArray(items) ? items.length : 0} stored`;
   } catch (error) {
-    if (epoch === state.epoch && request === state.contextRequest) $("contextStatus").textContent = error.message;
+    if (epoch === state.epoch && request === state.contextRequest) $("contextStatus").textContent = uiErrorMessage(error);
   }
 }
 function lockWorkspace() {
@@ -239,7 +235,7 @@ $("loginForm").addEventListener("submit", async (event) => {
     await loadContext();
   } catch (error) {
     state.key = "";
-    $("loginError").textContent = error.status === 401 ? "Invalid Classroom key." : error.message;
+    $("loginError").textContent = error.status === 401 ? "Invalid Classroom key." : uiErrorMessage(error);
   } finally {
     $("loginButton").disabled = false;
   }
@@ -266,7 +262,7 @@ $("sessionForm").addEventListener("submit", async (event) => {
     activity("Ready");
     sessionDialog.close();
   } catch (error) {
-    if (epoch === state.epoch) $("sessionError").textContent = error.message;
+    if (epoch === state.epoch) $("sessionError").textContent = messageFailureText(error, false);
   } finally {
     if (epoch === state.epoch) setBusy(false);
   }
@@ -280,16 +276,17 @@ $("messageForm").addEventListener("submit", async (event) => {
   showNotice("");
   activity("Mush Mush is working…");
   let completed = false;
+  let submittedToSession = false;
   try {
     if (!state.currentSession) await createSession("Classroom conversation");
     const id = state.currentSession.id;
     input.value = "";
+    submittedToSession = true;
     renderMessages({ messages: [...(state.currentSession.messages || []), { role: "user", content: message }] });
     const result = await api(`/api/sessions/${id}/messages`, {
       method: "POST", body: JSON.stringify({ message }),
     });
     completed = true;
-    // Keep the returned report visible even if refreshing the history fails.
     state.currentSession.messages = [
       ...(state.currentSession.messages || []),
       { role: "user", content: message },
@@ -297,15 +294,21 @@ $("messageForm").addEventListener("submit", async (event) => {
     ];
     renderMessages(state.currentSession);
     activity("Ready");
-    selectSession(await api(`/api/sessions/${id}`));
+    // Do not immediately replace the returned reply with DB history: saving it may have failed.
+    // Explicitly reopening a conversation still fetches authoritative stored history.
     await loadSessions();
     await loadContext();
   } catch (error) {
     if (epoch === state.epoch) {
       if (!completed) input.value = message;
-      showNotice(completed
-        ? `The response completed, but refreshing failed: ${error.message}`
-        : `${error.message} Work may already have been saved or performed. Reopen the conversation and check before resending.`);
+      const explanation = messageFailureText(error, completed);
+      showNotice(explanation);
+      // Local runtime notice remains visible even if the server/proxy sent no JSON.
+      if (!completed) renderMessages({ messages: [
+        ...(state.currentSession?.messages || []),
+        ...(submittedToSession ? [{ role: "user", content: message }] : []),
+        { role: "assistant", content: explanation },
+      ] });
       activity(completed ? "Ready" : "Check conversation");
     }
   } finally {
