@@ -26,8 +26,8 @@ export interface RuntimeDependencies {
   save(text: string): Promise<unknown>;
 }
 
-const DEFAULT_MAX_ROUNDS = 6;
-const DEFAULT_MAX_TOOL_CALLS = 16;
+const DEFAULT_MAX_ROUNDS = 14;
+const DEFAULT_MAX_TOOL_CALLS = 24;
 
 export async function runClassroomRuntime(
   deps: RuntimeDependencies,
