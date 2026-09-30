@@ -1,63 +1,96 @@
-# Video analysis v1 — milestone 1: secure video retrieval
+# Video analysis v1 — retrieval, extraction and Classroom analysis
 
-## Scope and status
+## Status and scope
 
-This milestone preserves the existing secure video-retrieval implementation on `mushmush/video-analysis-v1`. It does not implement frame extraction, video understanding, Classroom video tools, or Instagram Reels ingestion. No deployment or merge is included.
+Implemented on `mushmush/video-analysis-v1`, continuing the pushed retrieval checkpoint `6ec5ad9f309a1e370ec0d792e1a6a15c0d47546c`. This report replaces the retrieval-only status; that implementation was preserved, not rebuilt.
 
-Files:
-- `src/ai/publicVideo.ts`: bounded public HTTPS retrieval and sanitized failures.
-- `src/ai/publicVideo.test.ts`: 30 focused retrieval tests.
-- `package.json`: includes the retrieval tests in the existing test suite.
+Direct public HTTPS MP4/WebM -> secure bounded retrieval -> native metadata probing -> deterministic JPEG samples -> structured model analysis -> timestamped Classroom result is wired in code. Native extraction and mocked model integration are validated. A live end-to-end external download/model run has NOT been performed. No merge or deployment is included.
+
+Instagram Reel/page ingestion, audio, direct uploads, automatic research storage and trend conclusions are not implemented. These are not implied by accepting direct video-file URLs.
+
+## Files
+
+Previously committed and unchanged in this phase:
+- `src/ai/publicVideo.ts`: secure retrieval.
+- `src/ai/publicVideo.test.ts`: 30 retrieval tests.
+
+New in this phase:
+- `src/ai/videoFrames.ts`: bounded native processes, metadata validation, sampling, extraction and cleanup.
+- `src/ai/videoAnalysis.ts`: existing dress-schema reuse, actual vision-model request path, evidence validation and synthesis.
+- `src/ai/videoAnalysis.test.ts`: 30 additional tests, including native FFmpeg tests.
+- `src/tools/videoAnalysisTool.ts`: strict Classroom function schema and sanitized result envelopes.
+
+Updated:
+- `src/tools/instagramVisualResearchTool.ts`: registers and dispatches the video tool through the existing Classroom visual-tool architecture; still-image behavior remains intact.
+- `src/ai/instagramVisualResearch.integration.test.ts`: registration expectations now include the third (video) tool.
+- `package.json`: includes video analysis tests.
 - `docs/VIDEO_ANALYSIS_V1_REPORT.md`: this report.
 
-## Implemented behavior
+## Retrieval controls retained
 
-`loadPublicVideo` returns in-memory bytes, MIME, and byte length, without returning source URLs. The maximum body size is **25 MiB (26,214,400 bytes)**. Only HTTP 200 bodies declared as `video/mp4` or `video/webm` are accepted; MIME parameters and case are normalized. Container signatures are checked against the declared type. MP4 checks examine the ftyp box and supported brands; WebM checks require the EBML signature and WebM document-type marker. These are preliminary type checks, NOT proof of a complete, valid, decodable video or supported codec.
+Maximum **25 MiB (26,214,400 bytes)**. HTTPS only, using existing secure image URL/DNS foundations; credentials, unsafe ports, local/private addresses and mixed public/private DNS rejected. DNS is pinned to the validated public IPv4 while hostname-based TLS verification remains enabled. Redirect URL/DNS checks run at every hop, with at most three redirects/four requests. Each request has a 15-second deadline; streaming byte limits and declared lengths are checked. Only HTTP 200, uncompressed MP4/WebM responses with matching preliminary signatures are accepted. MIME parameters are normalized. Errors do not return source URLs or provider details.
 
-No new provider, API credentials, database structures, or Instagram writes are introduced. Existing still-image files are unchanged.
+## Native processing controls
 
-## Security controls and architectural reuse
+- Maximum duration: **60 seconds**; one video stream; at most eight total streams.
+- Containers: ffprobe's MP4/MOV family or Matroska/WebM, matching retrieved MIME.
+- Codec allowlist: H.264, HEVC, VP8, VP9, AV1. Actual decoder availability still depends on the installed FFmpeg build.
+- Maximum side: 4096 pixels; maximum area: 4096 x 2160 pixels.
+- Deterministic equally spaced midpoint seek targets; one to six frames, at most six.
+- 30-second shared native processing deadline, at most eight seconds per process; 64 KiB probe output and stderr caps.
+- JPEG output scaled within 768 x 768; at most 1 MiB per frame, at most 6 MiB retained frame bytes.
+- Fixed executable names and argument arrays, `shell: false`, no user-supplied process arguments. Input is a server-created local path, not a URL passed to FFmpeg.
+- Forced container demuxer, restricted file/pipe protocols, bounded probing, single decode/filter threads and 64 MiB maximum individual native allocation.
+- One extraction and one analysis pipeline at a time per process; no unbounded local queue.
+- Private temporary directory and exclusive input file creation (0600); at most 25 MiB input on disk. Frames use bounded stdout, not disk files.
+- Deadline/output-limit failures kill the child and wait for close before cleanup. The temporary directory is removed in `finally`; cleanup failures are reported, not silently ignored.
 
-The implementation imports `validateImageUrl`, `resolveImageHost`, and `isPublicIPv4` from the existing secure image retrieval module rather than replacing that foundation.
+These controls are NOT an OS sandbox or a hard aggregate native-memory quota. Process-local concurrency is not a cross-worker global limit. Malicious native-decoder vulnerabilities and local-file access are not eliminated by a protocol allowlist; patched FFmpeg and deployment isolation remain important. Abrupt host termination can bypass application cleanup. The bounds above do not claim instantaneous timeout delivery under an unresponsive host.
 
-- HTTPS URL restrictions inherited from image validation, including rejection of credentials, unsafe ports, private/local targets, fragments and disallowed sensitive query parameters.
-- Public IPv4 validation; empty or mixed public/private DNS results are rejected.
-- Validated DNS address pinned to the HTTPS socket while retaining hostname-based TLS verification; no shared connection agent.
-- Redirect destination URL and DNS revalidated at every hop; maximum three redirects/four requests.
-- Absolute 15-second deadline per HTTP request, not merely a resettable idle timeout.
-- Declared content-length checks plus streaming enforcement of the 25 MiB limit; incomplete or inconsistent bodies rejected.
-- Compressed responses, partial responses and non-200 final statuses rejected.
-- MIME and preliminary container signature validation; HTML and mismatched types rejected.
-- `VideoAccessError` provides sanitized stage information (`url`, `dns`, `transport`, `redirect`, `http`, `size`, `type`) without propagating provider messages, credentials or potentially signed URLs.
-- Retrieval remains in memory; this milestone creates no video temporary files.
+## Structured visual understanding
 
-## Test coverage
+`analyze_public_dress_video` accepts a direct public file URL. Extracted JPEG bytes are sent as data URLs to the configured vision model; the source video URL is not handed to the model. The request uses structured output, a 60-second model timeout, no automatic retries, a 7000-token output cap, and `store: false`.
 
-The 30 new tests cover MP4/WebM metadata, public-address pinning at the transport abstraction, MIME normalization, unsafe URLs, private/mixed DNS, relative and cross-host redirects, redirect revalidation and limits, missing redirect locations, HTTP errors/partial responses, empty and oversized bodies, the exact size boundary, compressed responses, invalid signatures/container mismatches, sanitized DNS/transport failures, and abort failures.
+Per-frame observations reuse `DressAnalysisSchema`: silhouette, neckline, sleeves, colors, lace, transparency, embellishments, visible tags and uncertain fabric hypotheses. Video-level visible observations and hypotheses cite frame indices, validated against the actual extracted sample. Missing/duplicate/out-of-range frame records are rejected. No-garment frames cannot support video-level garment claims. Trusted sampling timestamps are attached by application code, not accepted from model text.
 
-Tests use synthetic container bytes and injected/mock transport. The boundary test deliberately does not claim the accepted bytes are decodable. Existing knowledge, still-image, research-storage and Classroom response-resilience tests also ran.
+Sampling times are requested seek targets, NOT verified exact presentation timestamps. Sparse stills do not establish continuous movement, speed, exact fabric fibers, weight, hand-feel or product identity. The prompt and returned limitations explicitly distinguish facts from fabric/style/movement inferences and account for camera movement/editing. Audio is not analyzed. Image text is treated as untrusted data. No trend or designer identity is claimed from one video.
 
-## Actual validation rerun for preservation
+Failures return non-empty structured `CLASSROOM_RUNTIME_FAILURE` envelopes with stage information and safe guidance. No source URL, temporary path, JPEG bytes or raw native stderr is intentionally returned by the tool. Results declare `saved: false`; no database persistence is claimed.
 
-- `run_developer_check({check: "typecheck"})`: **success: true**, output `""`. Silent compiler output is valid success.
-- `run_developer_check({check: "test"})`: **success: true**. `npm test` runs `tsc --noEmit` followed by the configured test files.
-- Final result: **184 tests passed, 0 failed, 0 cancelled, 0 skipped, 0 todo**, including 30 video retrieval tests.
-- Expected structured runtime-failure diagnostics appeared from negative regression fixtures; the suite passed.
-- Current retrieval implementation, test source and package script were read for review. The available `git_diff` check returns statistics only and omits untracked file content; it showed only the package script change before staging. Full patch review via tooling was not available. The two new source files were reviewed directly instead.
+## Validation and recovered test failure
 
-## Known unverified areas and limits
+Earlier full-suite failure: an existing integration test still expected exactly two registered visual tools after video registration added a third. The registration expectation was updated; runtime behavior was not changed to satisfy the stale assertion.
 
-- No real external video download was performed in this preservation phase.
-- Native HTTPS socket behavior, deadline firing, streaming limit enforcement and truncated-network-body handling were not directly exercised by these mock-transport tests.
-- Container checks do not validate codecs, duration, resolution, frame count, media integrity, or decode resource usage.
-- No real video decoding, frame extraction or model invocation was performed.
-- No live Meta permission, video retrieval, vision accuracy or database validation occurred; those capabilities are outside this milestone.
-- No Classroom video-analysis tool is available from this retrieval layer alone.
+Final validation executed in this continuation:
+- `run_developer_check({check: "test"})`: **success: true**; `npm test` executes TypeScript validation followed by the entire configured suite.
+- **214 tests passed; 0 failed, 0 cancelled, 0 skipped, 0 todo.** This includes 30 retrieval tests and 30 video processing/analysis tests.
+- `run_developer_check({check: "typecheck"})`: **success: true**, output `""`. Silent output is valid compiler success.
+- Negative fixtures intentionally emitted structured runtime diagnostics; these are expected passing tests, not production failures.
 
-## Next phase — not started
+Real native execution in this environment:
+- FFmpeg generated synthetic MP4/H.264 and WebM/VP8 clips; ffprobe inspected them and FFmpeg extracted multiple JPEG frames through the real production extraction path.
+- Real process timeout and output-cap tests passed.
 
-Add duration/codec probing and resource-bounded decoding; extract a limited number of timestamped frames with cleanup. Then reuse structured visual analysis to distinguish visible design facts from uncertain fabric/movement hypotheses, and expose the capability through Classroom with integration tests. Instagram Reels ingestion remains separate pending explicit implementation scope and Meta access.
+Mocked/unit coverage:
+- HTTP/DNS retrieval fixtures; URL, MIME/signature, redirects, size and transport failures.
+- Metadata and duration/dimension/codec rejection; deterministic sampling; fixed arguments; cleanup success/failure paths; invalid JPEGs; concurrent extraction rejection.
+- Model fixtures and dependency-injected pipeline; timestamp association; evidence schema validation; no-garment constraints; sanitized adapter failures and Classroom dispatch.
+
+Review: current extraction, analysis, adapter, registration and test source were read directly. `git_diff` exposes statistics only and excludes untracked content before staging; a complete baseline unified-patch review was unavailable. No unrelated task 2/3 implementation was included.
+
+## Live validation and deployment limitations
+
+- No actual external video download or real vision inference in this phase. Synthetic test patterns do not establish dress-recognition quality.
+- Native HTTP socket deadline/stream-limit behavior was not directly exercised by mocked retrieval tests.
+- No live Meta or database test; this public-video tool uses neither Meta ingestion nor automatic database saving.
+- FFmpeg and ffprobe must be installed in the running Classroom environment. Native test success here does not install them in other deployments.
+- A vision-capable model supporting the structured schema and secure API configuration must exist in deployment. No credentials were inspected or exposed.
+- API result wiring is tested, but a live Classroom conversation accepting a real garment clip is still an acceptance test.
+
+## Next steps / acceptance
+
+Review this branch, verify target deployment media binaries/model configuration, then test a short public garment MP4/WebM in Classroom. Confirm timestamped facts versus hypotheses, rejection of inaccessible/oversized/long files, and safe failure messages. Instagram video/Reel retrieval remains separate work, not part of the completed direct-file implementation. Tasks 2 and 3 remain untouched.
 
 ## Preservation
 
-This report and the three milestone files are intended to be committed and pushed together on `mushmush/video-analysis-v1`. The exact commit hash and confirmed push outcome are reported in chat after those operations complete. No merge or deployment is authorized by this milestone.
+Commit and push the validated phase and this report on the existing branch. Exact commit and push outcome are reported in chat after confirmation. Nothing is merged or deployed by these operations.
