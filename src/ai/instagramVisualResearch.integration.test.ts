@@ -91,8 +91,8 @@ test("tool failures do not leak provider credentials", async () => {
   const result = await executeVisualResearchTool("analyze_public_dress_image", '{"url":"https://example.com/a"}', { ...toolDeps, analyze: async () => { throw new Error("fixture-secret"); } });
   assert.doesNotMatch(result, /fixture-secret/); assert.match(result, /unavailable/);
 });
-test("Classroom registration includes both strict callable schemas and dispatcher", async () => {
-  assert.deepEqual(visualResearchTools.map(t => t.name), ["analyze_public_dress_image", "research_instagram_designs"]);
+test("Classroom registration includes image, video and research strict schemas and dispatcher", async () => {
+  assert.deepEqual(visualResearchTools.map(t => t.name), ["analyze_public_dress_video", "analyze_public_dress_image", "research_instagram_designs"]);
   for (const tool of visualResearchTools) { assert.equal(tool.strict, true); assert.equal(tool.parameters.additionalProperties, false); }
   // Source wiring assertion avoids initializing unrelated live DB/OpenAI modules in the Classroom.
   const source = await readFile(new URL("../classroom/classroomTools.ts", import.meta.url), "utf8");
