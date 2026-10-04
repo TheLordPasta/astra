@@ -28,10 +28,12 @@ export const VisualResearchArgumentsSchema = z.object({
 { message: "Use a past date window of at most 366 days" });
 export type VisualResearchArguments = z.infer<typeof VisualResearchArgumentsSchema>;
 
-export async function analyzeDressImages(urls: string[]): Promise<DressAnalysis> {
+// Internal loader injection lets research memory hash and analyze the exact same
+// safely retrieved bytes. It is not exposed as a model/tool argument.
+export async function analyzeDressImages(urls: string[], load: typeof loadPublicImage = loadPublicImage): Promise<DressAnalysis> {
   if (!urls.length || urls.length > 2) throw new Error("Analyze one or two still images per call");
   const data = [];
-  for (const url of urls) data.push(await loadPublicImage(url));
+  for (const url of urls) data.push(await load(url));
   try {
     const client = new OpenAI();
     const response = await client.responses.parse({
@@ -139,7 +141,9 @@ export async function runInstagramVisualResearch(args: VisualResearchArguments, 
     try { collection = await deps.collect(username, parsed.since, parsed.until); }
     catch { limitations.add(`@${username}: retrieval failed; check Meta eligibility, permissions, token, rate limits and API field support.`); continue; }
     collection.limitations.forEach(value => limitations.add(value));
-    const compared = compareEngagement(collection.posts, Date.parse(asOf));
+    // Duplicate API rows must not inflate either the baseline or sample.
+    const uniquePosts = [...new Map(collection.posts.map(p => [p.id, p])).values()];
+    const compared = compareEngagement(uniquePosts, Date.parse(asOf));
     snapshots.push({ username, retrievedAt: collection.retrievedAt, scanned: collection.scanned,
       posts: compared.map(({ images: _images, ...post }) => post) });
     for (const { images, ...post } of selectPosts(compared)) {
