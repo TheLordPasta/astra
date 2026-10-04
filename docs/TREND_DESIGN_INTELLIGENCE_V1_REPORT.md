@@ -1,107 +1,82 @@
 # Task 3 — Trend/design intelligence and semantic-memory checkpoint
 
-Branch: `mushmush/trend-design-intelligence-v1`.
-This is a preservation checkpoint, not completion of Task 3. No merge or deployment is authorized. Instagram/web memory-first integration must not begin until this checkpoint is pushed.
+Branch: `mushmush/trend-design-intelligence-v1`. No merge or deployment.
 
-## Previously preserved phase
+## Current recovery milestone
 
-Commit `6378046e709aee33df3d805cb9364404bfc7250c` contains compound design-direction synthesis and cross-run visual-analysis reuse, with its original detailed report in Git history. That phase recorded typecheck success and 230 passing tests. Those historical results do not establish typecheck success for the current semantic-memory changes.
+Recovered from clean checkpoint `96248dba9f057bfa2fbcda33373da63bf3ddb981` after interrupted validation work. The existing semantic-memory implementation was not restarted or rewritten.
 
-The existing visual-memory mechanism downloads selected images through secure retrieval and hashes their ordered bytes together with the model and analysis-contract version. Matching validated records belonging to completed ResearchJobs can reuse analysis despite changed CDN URLs; changed bytes/model/version/order require fresh analysis. Metadata/engagement are refreshed. Same-instance concurrent analyses coalesce. Lookup failure does not silently trigger a paid fallback. Reuse becomes durable when report persistence completes. Images are not archived. The ten original reuse tests cover prepared bytes, cross-run changed-URL reuse, concurrent coalescing, changed content, key versioning, lookup failures, malformed records, failed analysis, unsaved reports and invalid input/download failures.
+Verified `npm test` already equals `node scripts/task3Validation.js all`. `scripts/` contained only the bounded runner: no custom compiler API experiment or temporary diagnostic-only command remained. package.json was left unchanged.
 
-## Current semantic-memory implementation
+The preserved runner still attempted full compilation on every all-mode invocation. Cleanup adds a fixed read-only cgroup resource policy: hosts with <=512 MiB memory or <=0.5 CPU skip compiler launch and record `unverified_resource_limit`, attempt zero, null exit code and `success:false`. Full/focused tests still run. This is not a successful compiler check. Aggregate npm test remains nonzero whenever compilation is skipped or a stage fails; nothing hides the gap. Larger or unknown-resource hosts retain one bounded official CLI attempt (120 seconds), not a custom compiler API. No compiler strictness, tsconfig scope or legitimate source inclusion was changed.
 
-- `src/ai/fashionMemory.ts`: typed claims, deterministic scoped concept identities, canonical evidence URLs, supporting/contradicting evidence, conservative assessments, and memory-planning priorities.
-- `src/db/fashionMemory.ts`: transaction-backed report persistence and semantic retrieval using existing PostgreSQL research and Trend/TrendObservation architecture.
-- `src/ai/researchMemory.ts`: production saves delegate to the atomic adapter. Existing source-quality/directness/recency/independence scoring and optional visual-confidence ceiling remain shared. Explicit injected legacy stores retain their non-atomic offline compatibility boundary.
-- `src/ai/fashionMemory.test.ts`: 15 focused regression cases with a transactional repository fake.
-- `scripts/task3Validation.js`, `package.json`: bounded validation with persistent sanitized diagnostics and separate focused/full-suite entry points.
+### Fresh validation results
 
-## Data model and concept identity
+One invocation of `run_developer_check(test)` ran the normal npm test command:
 
-No schema migration or parallel database was added. Existing Trend descriptions contain versioned `fashion-memory-v1:` metadata. TrendObservation holds `fashion_evidence_v1` evidence and append-only `fashion_assessment_v1` assessments. ResearchJob, ResearchSource, ResearchObservation and source links retain research evidence. Human lessons are untouched.
+| Stage | Result | Captured wall duration |
+|---|---|---:|
+| Focused semantic-memory tests | 15 passed, zero failures; exit 0 | 2.178 s |
+| Official full typecheck | NOT RUN: resource policy; unverified | 0 s |
+| Full suite (including four new runner regression tests) | 249 passed, zero failed/cancelled/skipped; exit 0 | 20.784 s |
 
-Concept keys hash kind, normalized name and normalized market/segment/category/geography. A small explicit alias dictionary handles known variants (for example A-line silhouette/A-line). This is deterministic identity, not general semantic equivalence. Different scope values remain separate identities.
+Both test stages had empty stderr, no termination signal and no timeout. Real cgroup readings: 536870912 memory bytes and 0.5 CPU. The top-level tool returned CLASSROOM_RUNTIME_FAILURE because the aggregate command exits 1 for unverified compilation. File-backed results were recovered successfully without retrying the command. Exact stage results and sanitized output are in `docs/TASK3_COMPILER_DIAGNOSTICS.md`.
 
-Only validated structured `fashionConcept` claims are consumed. Free text is not automatically assigned support/contradiction polarity. Claims need valid linked sources; unsupported or future-dated evidence cannot create concepts. Existing Instagram/web producers do not yet emit these structured claims through an integrated memory-first workflow.
+Historical conversation diagnostics reported official `tsc --noEmit` timing out at 30 and 120 seconds without compiler output in this resource class. The current checkpoint originally documented only the 30-second run. These are historical results, not new attempts. Treat this as an environment validation limitation unless actual compiler diagnostics establish a code defect. Full type safety remains unverified; tsx execution does not replace TypeScript checking.
 
-## Evidence, duplicate handling and history
+### Recovery policy and larger-environment validation
 
-Evidence records retain job/observation/source IDs, canonical URL, origin, stance, dates, confidence, statement, limitations and optional temporal measurements. Canonicalization removes tracking fragments/parameters and normalizes Instagram permalink variants. A concept+canonical-URL key gives one current evidence vote. Unchanged fingerprints add no vote or assessment; changed source interpretations append evidence revisions while retaining historical records. Assessments use the latest revision per key without overwriting prior assessments.
+Do not retry full typecheck in this constrained container. Use `node scripts/task3Validation.js local`, `npm run test:task3`, or `npm run test:full` for explicitly tests-only validation. Normal npm test remains all-mode and clearly marks the compilation gap. Run `npm run typecheck` / bounded all-mode in stronger CI before merge; no CI pass or configured CI job is claimed. Each stage has one attempt, fixed arguments, a deadline, 1 MiB output capture bound, credential-pattern redaction, and file-backed terminal status. If a wrapper fails, read diagnostics before any retry. If metadata is unavailable, there is at most one bounded attempt, never an automatic recovery loop.
 
-First/last observation dates, support/contradiction keys and source references are retained. Revisions do not strengthen confidence simply because another run encountered the same URL. Cross-URL copies, re-encoded images, garment identity and account ownership are NOT resolved by this layer.
+Four new tests cover constrained resource policy and unverified status, larger/unlimited/missing resource metadata, all/local mode scope and invalid commands, and silent output/redaction. Runner imports have no validation side effects.
 
-## Trend evolution
+## Previously preserved design/visual-memory phase
 
-Recent discovery or recurrence alone stays uncertain. Increasing/declining/stable/emerging require explicitly comparable non-overlapping measurement windows, at least two supporting origins, and no contradictory/conflicting measurements. Emergence requires a zero-prevalence earlier window and sufficient later change. Conflicts force uncertainty. The 0.15 prevalence-change threshold and capped confidence are conservative heuristics, not calibrated forecasts. Upstream comparability and independent-origin verification remain unfinished.
+Commit `6378046e709aee33df3d805cb9364404bfc7250c` contains compound design-direction synthesis and cross-run visual-analysis reuse (historically 230 tests and typecheck passed). Downloads use secure retrieval; ordered image bytes, model and analysis version determine the reuse hash. Changed CDN URL alone does not invalidate matching bytes. Changed bytes/model/version/order require fresh analysis. Metadata and engagement refresh. Same-instance concurrent calls coalesce; failed lookup does not silently cause a paid fallback. Reuse is durable after report save; images are not archived. The ten original regression cases cover prepared bytes, changed URLs across runs, concurrency, changed content, versioning, lookup failure, malformed records, failed analysis, unsaved reports and invalid/download inputs.
 
-## Persistence and retrieval reliability
+## Semantic persistence/retrieval already implemented
 
-A running job is created before the save transaction; sources, observations, limitations, concept evidence, assessments and completion are saved transactionally. A transaction-scoped advisory lock serializes concept identity updates. Failed transactional writes roll back; failure marking is best effort and failures explain completion uncertainty rather than inviting blind retries. Production PostgreSQL lock/isolation/timeout behavior has not been tested live.
+- `src/ai/fashionMemory.ts`: typed claims, stable scoped concept identities, canonical evidence URLs, support/contradiction evidence, cautious assessments and planning.
+- `src/db/fashionMemory.ts`: transactional research saving and semantic retrieval through existing PostgreSQL research/Trend/TrendObservation architecture.
+- `src/ai/researchMemory.ts`: production saves delegate to atomic persistence; existing confidence scoring and optional visual ceiling retained. Injected legacy stores retain their documented offline non-atomic compatibility path.
+- `src/ai/fashionMemory.test.ts`: 15 regressions using transactional repository mocks.
 
-Semantic retrieval accepts scope/subject/confidence filters and only includes evidence linked to completed research jobs. Invalid stored records are ignored. History is retained; retrieval returns a current reassessment and history count. General raw-observation retrieval is not claimed to have the same filtering guarantees. Jobs that fail before report saving are not yet guaranteed to have a run record.
+No schema migration or parallel memory database. Trend descriptions hold versioned fashion-memory metadata. TrendObservation holds fashion evidence and append-only assessments; ResearchJob/Source/Observation and links retain source evidence. Human lessons remain separate and authoritative.
 
-## Memory-first planning boundary
+Concept keys normalize kind, name and market/segment/category/geography. Explicit aliases handle known variants, not arbitrary semantic equivalence. Valid structured fashionConcept claims and linked sources are required; unsupported/future evidence does not create learned concepts. Instagram/web producers are not yet fully integrated.
 
-`loadFashionResearchPlan` loads existing semantic knowledge and identifies stale (>90 days), weak, conflicting or missing temporal evidence. It distinguishes revisable research from human lessons. This helper is implemented and tested, but is NOT yet connected before Instagram or web research. No integrated gap-prioritized research behavior is claimed.
+Evidence retains job/observation/source references, canonical URL, origin, stance, dates, confidence, statement, limitations and optional measurements. A concept+canonical-URL key has one current vote. Unchanged fingerprints add neither vote nor assessment; revisions append history rather than overwrite it. Cross-URL copies, garment identity and account ownership remain unresolved.
 
-## Fifteen focused regression cases
+First/last observation and current support/contradiction references are retained. Temporal increasing/declining/stable/emerging require comparable non-overlapping measurement windows, two supporting origins and no conflicts. New discovery alone remains uncertain. Emergence requires earlier zero prevalence plus sufficient change. Confidence caps and 0.15 change threshold are conservative heuristics, not calibrated forecasts. Upstream comparability needs verification.
 
-1. Concept aliases/scope normalization and distinct kinds/scopes.
-2. Tracking removal and Instagram URL canonicalization.
-3. Malformed claims/stored JSON handled safely.
+Persistence starts a running job before its save transaction. Sources, observations, limitations, concept evidence and completion are transactional; an advisory lock serializes concept updates. Rollbacks preserve failure status where possible. Semantic retrieval excludes evidence from incomplete jobs. General raw-memory filtering and jobs that fail before report saving remain separate gaps. PostgreSQL lock/timeout behavior has not been live-tested.
+
+`loadFashionResearchPlan` retrieves scoped knowledge, flags stale (>90 days), weak, conflicting or missing temporal evidence. It is tested but not yet wired into both fresh-research entry points.
+
+## Fifteen existing semantic-memory regressions
+
+1. Alias/scope identities and distinct concepts.
+2. Canonical tracking-free Instagram evidence URLs.
+3. Malformed claims/records.
 4. Recurrence is not automatic emergence.
-5. Temporal states and contradictory/conflicting measurements.
-6. One current vote per source revision and preserved first observation.
-7. Same concept across runs retains independent evidence/source links.
-8. Duplicate evidence does not inflate confidence or history.
-9. Contradiction appends assessment without rewriting history.
-10. Temporal state changes preserve earlier assessments.
-11. Failed/running/saving jobs excluded from semantic knowledge.
-12. Transaction rollback retains failed job without partial concepts.
-13. Planning retrieves existing scoped knowledge and flags gaps.
-14. Legacy scoring/visual ceiling and uncertainty preservation.
-15. Source-free and future evidence excluded from concepts.
-
-## Actual validation and exact limitations
-
-Results recorded in the preceding validation turn:
-
-- Focused fashion-memory tests: **15 passed, 0 failed**.
-- Full suite: **245 passed, 0 failed, 0 skipped**.
-- Full TypeScript check: **timed out after 30 seconds**, terminated by runner with SIGKILL.
-- Compiler stdout and stderr were empty; **no compiler diagnostics were produced**.
-- This is a **timeout limitation, not a proven TypeScript error**. Full type safety remains unverified. Test execution through tsx does not substitute for compilation.
-- No new validation commands were run in this preservation turn. The generated diagnostic file failed to read twice; the concise `docs/TASK3_COMPILER_DIAGNOSTICS.md` records the preceding results with that provenance, not invented recovered output.
-- Persistence/model behavior is mocked; no live PostgreSQL, Meta or vision acceptance tests ran for this checkpoint.
-
-## Normal test behavior and remaining diagnostic tooling
-
-`npm test` is `node scripts/task3Validation.js all`: focused tests, full typecheck and the full listed test suite, one attempt per stage, with a failing aggregate status if any stage fails. It is NOT focused-only or output-only. The script differs from the original bare command by bounding compilation (30s, 384 MiB heap), focused tests (15s), full suite (45s), and captured output (1 MiB). Full tests still execute after compiler failure so diagnostics are preserved; compiler failure is not hidden.
-
-`test:task3` runs focused tests, `test:full` runs all listed tests without typecheck, and `typecheck` remains `tsc --noEmit`. The diagnostic runner and generated-report path intentionally remain; they are not temporary bypasses. Future npm test executions rewrite the tracked diagnostics report and may dirty the working tree. A 30-second compiler deadline may be insufficient in this environment; no claim is made that npm test currently exits successfully.
-
-## Final review and intended checkpoint files
-
-Reviewed all source/config/test/runner files directly and checked Git state. The available git_diff tool provides statistics only, not a unified patch, and omits untracked content. Full unified-patch review remains unavailable. Diagnostic-file read recovery stopped after two attempts; a concise provenance-labelled validation summary replaced the verbose generated output, without changing implementation.
-
-Exact intended files:
-
-- `package.json`
-- `src/ai/researchMemory.ts`
-- `src/ai/fashionMemory.ts`
-- `src/db/fashionMemory.ts`
-- `src/ai/fashionMemory.test.ts`
-- `scripts/task3Validation.js`
-- `docs/TASK3_COMPILER_DIAGNOSTICS.md`
-- `docs/TREND_DESIGN_INTELLIGENCE_V1_REPORT.md`
-
-No secrets, generated Prisma artifacts, unrelated features or Task 2 changes are included.
+5. Temporal states and conflicts.
+6. Revision vote deduplication and first observation.
+7. Same concept across runs and source links.
+8. Duplicates do not inflate confidence/history.
+9. Contradiction preserves previous assessments.
+10. Temporal state changes preserve history.
+11. Failed/incomplete jobs excluded.
+12. Transaction rollback and failed-job record.
+13. Scoped memory planning and gaps.
+14. Legacy confidence/ceiling/uncertainties.
+15. Unsupported/future evidence rejected.
 
 ## Remaining Task 3 work
 
-After preservation: Instagram/web structured-claim generation and memory-first planning integration; general semantic-memory tool retrieval; broader concept equivalence and cross-URL content deduplication; reliable pre-research job history; scalability beyond description-field scans/global lock; upstream temporal comparability; full typecheck and live PostgreSQL acceptance; richer design vocabulary, cautious forecasting, original design briefs and any separately available rendering capability. This checkpoint does not complete those features.
+Connect Instagram/web structured-claim generation and memory-first planning; expose semantic retrieval through existing research memory; improve broader concept equivalence and cross-URL content deduplication; reliable pre-research job history; scalability beyond description scans/global lock; upstream temporal comparability; live PostgreSQL acceptance and full compiler check; broader design vocabulary, original design briefs and separately available rendering.
 
-## Delivery
+No live Meta, web research, vision or database requests were made during validation recovery. Tests use mocked persistence/model behavior; existing native media tests executed real synthetic-media FFmpeg paths successfully. No fresh paid research was run.
 
-Commit and push only this checkpoint, then stop. Commit hash and confirmed remote outcome are reported in chat after tool confirmation. Nothing is merged or deployed by this work.
+## Cleanup review / delivery
+
+Only runner, runner tests, diagnostics and this report changed in the recovery checkpoint. package.json and business logic were preserved. Source reviewed directly; available git_diff exposes statistics only, so full unified-patch review is not claimed. Commit/push results are reported after confirmation. A clean pushed checkpoint is required before resuming research integration.
