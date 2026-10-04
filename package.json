@@ -8,7 +8,10 @@
     "copy:classroom-ui": "cpx \"src/classroom/ui/**/*\" dist/classroom/ui",
     "start": "node dist/server/server.js",
     "start:classroom": "node dist/classroom/classroomServer.js",
-    "test": "tsc --noEmit 1>&2 && tsx --test src/ai/classroomKnowledge.test.ts src/ai/classroomKnowledge.integration.test.ts src/ai/instagramVisualResearch.test.ts src/ai/instagramVisualResearch.integration.test.ts src/ai/instagramVisualResearch.storage.test.ts src/classroom/runtimeSafety.test.ts src/classroom/responseTransport.test.ts src/classroom/ui/apiClient.test.js src/ai/publicVideo.test.ts src/ai/videoAnalysis.test.ts src/ai/designDirections.test.ts src/ai/researchVisualMemory.test.ts 1>&2",
+    "test": "node scripts/task3Validation.js all",
+    "test:full": "node scripts/task3Validation.js full",
+    "test:task3": "node scripts/task3Validation.js targeted",
+    "typecheck": "tsc --noEmit",
     "postinstall": "prisma skills sync || exit 0"
   },
   "keywords": [],
