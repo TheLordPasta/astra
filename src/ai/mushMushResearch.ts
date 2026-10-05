@@ -89,14 +89,29 @@ Think like an industry researcher gathering experience for Classic Textile.
 Return only the structured research report.
 `.trim();
 }
-export async function runMarketResearch(
+async function performMarketResearch(
   researchRequest: string,
-): Promise<ResearchReport> {
-  const response = await openai.responses.parse({
+  maxOutputTokens: number,
+  compact = false,
+) {
+  const compactInstruction = compact
+    ? `
+
+IMPORTANT OUTPUT BUDGET:
+Keep the final report compact.
+Prioritize the strongest source-backed technical findings.
+Avoid repeating the same evidence across findings.
+Prefer fewer high-quality findings over many weak findings.
+Keep evidence concise while preserving technical facts and source URLs.
+You MUST finish the structured report within the available output budget.`
+    : "";
+
+  return openai.responses.parse({
     model,
-    instructions: marketResearchInstructions(
-      new Date().toISOString().slice(0, 10),
-    ),
+
+    instructions:
+      marketResearchInstructions(new Date().toISOString().slice(0, 10)) +
+      compactInstruction,
 
     tools: [
       {
@@ -110,7 +125,7 @@ export async function runMarketResearch(
     },
 
     max_tool_calls: 4,
-    max_output_tokens: 12000,
+    max_output_tokens: maxOutputTokens,
 
     text: {
       format: zodTextFormat(ResearchReportSchema, "market_research_report"),
@@ -118,6 +133,28 @@ export async function runMarketResearch(
 
     input: researchRequest,
   });
+}
+
+export async function runMarketResearch(
+  researchRequest: string,
+): Promise<ResearchReport> {
+  // First attempt: normal bounded research.
+  let response = await performMarketResearch(researchRequest, 12000, false);
+
+  // One recovery attempt only.
+  //
+  // Research-heavy web calls may consume the output budget through
+  // reasoning/tool work before the structured report is completed.
+  // Retry once with a larger budget and a stronger compactness instruction.
+  //
+  // Do NOT retry other failure types automatically because research may
+  // involve paid external work and its completion state may be uncertain.
+  if (
+    response.status === "incomplete" &&
+    response.incomplete_details?.reason === "max_output_tokens"
+  ) {
+    response = await performMarketResearch(researchRequest, 20000, true);
+  }
 
   if (response.status && response.status !== "completed") {
     const reason = response.incomplete_details?.reason ?? "unknown";
