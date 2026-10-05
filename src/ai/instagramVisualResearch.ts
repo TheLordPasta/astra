@@ -28,10 +28,12 @@ export const VisualResearchArgumentsSchema = z.object({
 { message: "Use a past date window of at most 366 days" });
 export type VisualResearchArguments = z.infer<typeof VisualResearchArgumentsSchema>;
 
-export async function analyzeDressImages(urls: string[]): Promise<DressAnalysis> {
+// Internal loader injection lets research memory hash and analyze the exact same
+// safely retrieved bytes. It is not exposed as a model/tool argument.
+export async function analyzeDressImages(urls: string[], load: typeof loadPublicImage = loadPublicImage): Promise<DressAnalysis> {
   if (!urls.length || urls.length > 2) throw new Error("Analyze one or two still images per call");
   const data = [];
-  for (const url of urls) data.push(await loadPublicImage(url));
+  for (const url of urls) data.push(await load(url));
   try {
     const client = new OpenAI();
     const response = await client.responses.parse({
@@ -118,6 +120,8 @@ export interface VisualResearchDependencies {
   collect(username: string, since: string, until: string): Promise<InstagramPostCollection>;
   analyze(urls: string[]): Promise<DressAnalysis>;
   now(): Date;
+  // Internal planning hook only. Engagement baselines still use all retrieved posts.
+  select?(posts: ComparedPost[]): SelectedPost[];
 }
 export const liveVisualDependencies: VisualResearchDependencies = {
   collect(username, since, until) {
@@ -139,10 +143,21 @@ export async function runInstagramVisualResearch(args: VisualResearchArguments, 
     try { collection = await deps.collect(username, parsed.since, parsed.until); }
     catch { limitations.add(`@${username}: retrieval failed; check Meta eligibility, permissions, token, rate limits and API field support.`); continue; }
     collection.limitations.forEach(value => limitations.add(value));
-    const compared = compareEngagement(collection.posts, Date.parse(asOf));
+    // Duplicate API rows must not inflate either the baseline or sample.
+    const uniquePosts = [...new Map(collection.posts.map(p => [p.id, p])).values()];
+    const compared = compareEngagement(uniquePosts, Date.parse(asOf));
     snapshots.push({ username, retrievedAt: collection.retrievedAt, scanned: collection.scanned,
       posts: compared.map(({ images: _images, ...post }) => post) });
-    for (const { images, ...post } of selectPosts(compared)) {
+    const selected = (deps.select ?? selectPosts)(compared);
+    // A planner cannot broaden the source sample, duplicate rows or raise the budget.
+    const seen = new Set<string>();
+    const bounded = selected.flatMap(choice => {
+      const original = compared.find(p => p.id === choice.id);
+      if (!original || seen.has(original.id)) return [];
+      seen.add(original.id);
+      return [{ ...original, sampleRole: choice.sampleRole }];
+    }).slice(0, 4);
+    for (const { images, ...post } of bounded) {
       try {
         const analysis = DressAnalysisSchema.parse(await deps.analyze(images.slice(0, 2)));
         analyzed.push({ ...post, imagesAvailable: images.length, imagesAnalyzed: Math.min(2, images.length), analysis, analysisError: null });
