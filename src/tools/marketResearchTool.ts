@@ -1,12 +1,45 @@
 import { z } from "zod/v4";
+import "dotenv/config";
+import OpenAI from "openai";
+import { zodTextFormat } from "openai/helpers/zod";
+
+const openai = new OpenAI();
+
+const model = process.env.OPENAI_MODEL ?? "gpt-6-astra";
 import {
   runMemoryFirstWebResearch,
   loadLiveFashionPlan,
 } from "../ai/fashionResearchPlanning.js";
 import type { MemoryFirstWebDependencies } from "../ai/fashionResearchPlanning.js";
+const ResearchPlanSchema = z.object({
+  sourceMode: z.enum(["web", "instagram", "web_and_instagram"]),
+
+  webObjective: z.string().nullable(),
+
+  instagramObjective: z.string().nullable(),
+
+  instagramDesigners: z.array(z.string()).max(20),
+
+  rationale: z.string(),
+});
+
+type ResearchPlan = z.infer<typeof ResearchPlanSchema>;
+export interface InstagramResearchRequest {
+  originalRequest: string;
+  objective: string;
+  designers: string[];
+}
+
+export type InstagramResearchCollector = (
+  request: InstagramResearchRequest,
+) => Promise<string>;
+
+export interface MarketResearchDependencies {
+  instagramCollector?: InstagramResearchCollector;
+}
 
 export const marketResearchArgumentsSchema = z.object({
-  researchQuestion: z.string().min(5).max(500),
+  researchQuestion: z.string().trim().min(5).max(4000),
   market: z.string().min(1).max(100),
   segment: z.string().min(1).max(100),
   category: z.string().min(1).max(100),
@@ -16,6 +49,77 @@ export const marketResearchArgumentsSchema = z.object({
 export type MarketResearchArguments = z.infer<
   typeof marketResearchArgumentsSchema
 >;
+async function planResearch(
+  researchRequest: string,
+  instagramAvailable: boolean,
+): Promise<ResearchPlan> {
+  const response = await openai.responses.parse({
+    model,
+
+    reasoning: {
+      effort: "low",
+    },
+
+    max_output_tokens: 1500,
+
+    text: {
+      format: zodTextFormat(ResearchPlanSchema, "research_plan"),
+    },
+
+    instructions: `
+You decide which evidence sources Mush Mush needs.
+
+WEB:
+Use for:
+- mills
+- textile manufacturers
+- machinery
+- technical textile knowledge
+- suppliers
+- pricing
+- official websites
+- news
+- market information
+
+INSTAGRAM:
+Use for:
+- designer posts
+- current collections
+- actual garments
+- silhouettes
+- embroidery
+- embellishments
+- colors
+- visual fabric characteristics
+- engagement signals
+- recurring visual directions
+
+WEB_AND_INSTAGRAM:
+Use when both are genuinely needed.
+
+Instagram available:
+${instagramAvailable ? "yes" : "no"}
+
+Rules:
+
+1. Choose based on the research question.
+2. Do not choose Instagram if it is unavailable.
+3. Technical manufacturing questions usually require web.
+4. Questions about what designers are currently posting usually require Instagram.
+5. Questions connecting designer trends to fabrics, sourcing or manufacturing may require both.
+6. If Instagram is needed, list the relevant designer usernames when possible.
+`.trim(),
+
+    input: researchRequest,
+  });
+
+  if (!response.output_parsed) {
+    throw new Error("Mush Mush could not create a research plan.");
+  }
+
+  return response.output_parsed;
+}
+
 export const marketResearchTool = {
   type: "function" as const,
   name: "run_market_research",
@@ -32,6 +136,7 @@ export const marketResearchTool = {
     properties: {
       researchQuestion: {
         type: "string",
+        maxLength: 4000,
         description: "The specific question the research needs to answer.",
       },
       market: {
@@ -106,6 +211,7 @@ function researchFailure(
     ...extra,
   });
 }
+
 export async function executeMarketResearchTool(
   rawArguments: string,
   deps: MarketResearchDependencies = liveDependencies,
