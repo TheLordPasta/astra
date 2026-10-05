@@ -439,6 +439,13 @@ export async function executeClassroomTool(
         });
     }
   } catch (error) {
+    // Let research failures reach runtimeSafety as exceptions.
+    // Otherwise they become legacy { error: "..." } results and lose
+    // their original failure classification.
+    if (name === "run_market_research") {
+      throw error;
+    }
+
     return JSON.stringify({
       error:
         error instanceof Error ? error.message : "Unknown Classroom tool error",
