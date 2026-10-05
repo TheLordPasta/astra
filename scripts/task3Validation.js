@@ -15,9 +15,10 @@ const suites = [
   "src/classroom/responseTransport.test.ts", "src/classroom/ui/apiClient.test.js",
   "src/ai/publicVideo.test.ts", "src/ai/videoAnalysis.test.ts",
   "src/ai/designDirections.test.ts", "src/ai/researchVisualMemory.test.ts", "src/ai/fashionMemory.test.ts",
+  "src/ai/fashionResearchPlanning.integration.test.ts",
 ];
 const commands = {
-  targeted: { args: ["--import", "tsx", "--test", "src/ai/fashionMemory.test.ts"], timeout: 15000 },
+  targeted: { args: ["--import", "tsx", "--test", "--test-concurrency=1", "src/ai/fashionMemory.test.ts", "src/ai/designDirections.test.ts", "src/ai/fashionResearchPlanning.integration.test.ts"], timeout: 15000 },
   typecheck: { args: ["node_modules/typescript/bin/tsc", "--noEmit", "--pretty", "false"], timeout: 120000 },
   full: { args: ["--import", "tsx", "--test", "--test-concurrency=1", ...suites], timeout: 45000 },
 };

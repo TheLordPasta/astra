@@ -120,6 +120,8 @@ export interface VisualResearchDependencies {
   collect(username: string, since: string, until: string): Promise<InstagramPostCollection>;
   analyze(urls: string[]): Promise<DressAnalysis>;
   now(): Date;
+  // Internal planning hook only. Engagement baselines still use all retrieved posts.
+  select?(posts: ComparedPost[]): SelectedPost[];
 }
 export const liveVisualDependencies: VisualResearchDependencies = {
   collect(username, since, until) {
@@ -146,7 +148,16 @@ export async function runInstagramVisualResearch(args: VisualResearchArguments, 
     const compared = compareEngagement(uniquePosts, Date.parse(asOf));
     snapshots.push({ username, retrievedAt: collection.retrievedAt, scanned: collection.scanned,
       posts: compared.map(({ images: _images, ...post }) => post) });
-    for (const { images, ...post } of selectPosts(compared)) {
+    const selected = (deps.select ?? selectPosts)(compared);
+    // A planner cannot broaden the source sample, duplicate rows or raise the budget.
+    const seen = new Set<string>();
+    const bounded = selected.flatMap(choice => {
+      const original = compared.find(p => p.id === choice.id);
+      if (!original || seen.has(original.id)) return [];
+      seen.add(original.id);
+      return [{ ...original, sampleRole: choice.sampleRole }];
+    }).slice(0, 4);
+    for (const { images, ...post } of bounded) {
       try {
         const analysis = DressAnalysisSchema.parse(await deps.analyze(images.slice(0, 2)));
         analyzed.push({ ...post, imagesAvailable: images.length, imagesAnalyzed: Math.min(2, images.length), analysis, analysisError: null });

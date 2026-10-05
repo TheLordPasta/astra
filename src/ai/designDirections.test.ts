@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { summarizeDesignDirections } from "./designDirections.js";
 import { runDesignDirectionResearch } from "./designDirectionResearch.js";
+import { planFashionResearch } from "./fashionMemory.js";
 import type { AnalyzedPost, DressAnalysis } from "./instagramVisualResearch.js";
 
 const analysis: DressAnalysis = { garmentVisible: true, confidence: 0.8,
@@ -52,7 +53,7 @@ test("research wrapper retains original signals and persists direction evidence 
     now: () => new Date("2025-02-01T00:00:00Z"), analyze: async () => analysis,
     collect: async username => { const { id, caption, permalink, timestamp, likes, comments } = post(username);
       return { posts: [{ username, id, caption, permalink, timestamp, likes, comments, images: ["https://example.com/a.jpg"] }], scanned: 1, retrievedAt: "2025-02-01T00:00:00Z", limitations: [] }; },
-  });
+  }, async () => planFashionResearch([]));
   assert.ok(result.candidates.length > 0);
   assert.equal(result.designSynthesis.directions.length, 1);
   const finding = result.report.findings.find(f => f.subject === "Botanical transparency")!;
