@@ -6,20 +6,51 @@ import { z } from "zod/v4";
 const openai = new OpenAI();
 const model = process.env.OPENAI_MODEL ?? "gpt-6-astra";
 const ResearchSourceSchema = z.object({
-  title: z.string(), url: z.string(),
-  sourceType: z.enum(["official", "news", "trade", "designer", "supplier", "retailer", "social", "other"]),
+  title: z.string(),
+  url: z.string(),
+  sourceType: z.enum([
+    "official",
+    "news",
+    "trade",
+    "designer",
+    "supplier",
+    "retailer",
+    "social",
+    "other",
+  ]),
   publishedAt: z.string().nullable(),
 });
 const ResearchFindingSchema = z.object({
-  type: z.enum(["competitor", "designer", "trend", "market_signal", "pricing", "customer_behavior", "product", "opportunity", "other"]),
-  subject: z.string(), statement: z.string(), evidence: z.string(),
-  confidence: z.number().min(0).max(1), sourceUrls: z.array(z.string()),
+  type: z.enum([
+    "competitor",
+    "designer",
+    "trend",
+    "market_signal",
+    "pricing",
+    "customer_behavior",
+    "product",
+    "opportunity",
+    "other",
+  ]),
+  subject: z.string(),
+  statement: z.string(),
+  evidence: z.string(),
+  confidence: z.number().min(0).max(1),
+  sourceUrls: z.array(z.string()),
 });
 const ResearchReportSchema = z.object({
-  topic: z.string(), scope: z.string(), market: z.string().nullable(), segment: z.string().nullable(),
-  category: z.string().nullable(), geography: z.string().nullable(), timeRange: z.string().nullable(),
-  asOf: z.string(), summary: z.string(), findings: z.array(ResearchFindingSchema),
-  uncertainties: z.array(z.string()), sources: z.array(ResearchSourceSchema),
+  topic: z.string(),
+  scope: z.string(),
+  market: z.string().nullable(),
+  segment: z.string().nullable(),
+  category: z.string().nullable(),
+  geography: z.string().nullable(),
+  timeRange: z.string().nullable(),
+  asOf: z.string(),
+  summary: z.string(),
+  findings: z.array(ResearchFindingSchema),
+  uncertainties: z.array(z.string()),
+  sources: z.array(ResearchSourceSchema),
 });
 export type ResearchReport = z.infer<typeof ResearchReportSchema>;
 
@@ -58,14 +89,49 @@ Think like an industry researcher gathering experience for Classic Textile.
 Return only the structured research report.
 `.trim();
 }
-export async function runMarketResearch(researchRequest: string): Promise<ResearchReport> {
+export async function runMarketResearch(
+  researchRequest: string,
+): Promise<ResearchReport> {
   const response = await openai.responses.parse({
-    model, instructions: marketResearchInstructions(new Date().toISOString().slice(0, 10)),
-    tools: [{ type: "web_search", search_context_size: "medium" }],
-    max_tool_calls: 4, max_output_tokens: 2500,
-    text: { format: zodTextFormat(ResearchReportSchema, "market_research_report") },
+    model,
+    instructions: marketResearchInstructions(
+      new Date().toISOString().slice(0, 10),
+    ),
+
+    tools: [
+      {
+        type: "web_search",
+        search_context_size: "medium",
+      },
+    ],
+
+    reasoning: {
+      effort: "low",
+    },
+
+    max_tool_calls: 4,
+    max_output_tokens: 12000,
+
+    text: {
+      format: zodTextFormat(ResearchReportSchema, "market_research_report"),
+    },
+
     input: researchRequest,
   });
-  if (!response.output_parsed) throw new Error("Mush Mush research returned no structured report.");
+
+  if (response.status && response.status !== "completed") {
+    const reason = response.incomplete_details?.reason ?? "unknown";
+
+    throw new Error(
+      `Mush Mush research incomplete: status=${response.status}, reason=${reason}`,
+    );
+  }
+
+  if (!response.output_parsed) {
+    throw new Error(
+      `Mush Mush research completed but returned no structured report. output_text_length=${response.output_text?.length ?? 0}`,
+    );
+  }
+
   return response.output_parsed;
 }
