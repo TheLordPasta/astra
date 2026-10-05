@@ -15,10 +15,20 @@ import {
 
 import { sendInstagramMessage } from "./instagramClient.js";
 
+interface InstagramAttachment {
+  type?: string;
+  payload?: {
+    url?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
 interface InstagramMessage {
   mid?: string;
   text?: string;
   is_echo?: boolean;
+  attachments?: InstagramAttachment[];
   [key: string]: unknown;
 }
 
@@ -66,6 +76,19 @@ function enqueueMessage(senderId: string, task: () => Promise<void>): void {
   });
 }
 
+function getInstagramVideoUrl(message: InstagramMessage): string | null {
+  for (const attachment of message.attachments ?? []) {
+    if (
+      attachment.type === "video" &&
+      typeof attachment.payload?.url === "string"
+    ) {
+      return attachment.payload.url;
+    }
+  }
+
+  return null;
+}
+
 function isInstagramWebhookPayload(
   payload: unknown,
 ): payload is InstagramWebhookPayload {
@@ -76,6 +99,7 @@ async function processInstagramMessage(
   senderId: string,
   messageId: string,
   text: string,
+  videoUrl: string | null,
 ): Promise<void> {
   console.log("\n=== INSTAGRAM MESSAGE PROCESSING ===");
   console.log("Sender:", senderId);
@@ -120,12 +144,18 @@ async function processInstagramMessage(
   }
 
   // Save the customer's message.
+  const savedCustomerContent =
+    text ||
+    (videoUrl ? "[Customer sent an Instagram video]" : "[Instagram message]");
+
   await addConversationMessage({
     conversationId: conversation.id,
     role: "user",
-    content: text,
+    content: savedCustomerContent,
     externalMessageId: messageId,
   });
+
+  console.log("Customer message saved.");
 
   console.log("Customer message saved.");
 
@@ -206,16 +236,24 @@ export async function handleInstagramWebhook(payload: unknown): Promise<void> {
         continue;
       }
 
-      const text = message.text?.trim();
+      const text = message.text?.trim() ?? "";
+      const videoUrl = getInstagramVideoUrl(message);
       const messageId = message.mid;
 
-      if (!text || !messageId) {
-        console.log("Ignoring Instagram event without text or message ID.");
+      if (!messageId) {
+        console.log("Ignoring Instagram event without message ID.");
+        continue;
+      }
+
+      if (!text && !videoUrl) {
+        console.log(
+          "Ignoring Instagram event without supported text or video.",
+        );
         continue;
       }
 
       enqueueMessage(senderId, async () => {
-        await processInstagramMessage(senderId, messageId, text);
+        await processInstagramMessage(senderId, messageId, text, videoUrl);
       });
     }
   }
