@@ -1,5 +1,8 @@
 import { z } from "zod/v4";
-import { visualResearchTools, executeVisualResearchTool } from "../tools/instagramVisualResearchTool.js";
+import {
+  visualResearchTools,
+  executeVisualResearchTool,
+} from "../tools/instagramVisualResearchTool.js";
 
 import { createBaselineCommitTool } from "./classroomGit.js";
 
@@ -237,14 +240,12 @@ const learnFromCustomerConversationsTool = {
       maxCustomers: {
         type: ["integer", "null"],
         minimum: 1,
-        description:
-          "Maximum number of customers to analyze.",
+        description: "Maximum number of customers to analyze.",
       },
       maxMessages: {
         type: ["integer", "null"],
         minimum: 20,
-        description:
-          "Maximum number of customer messages to analyze.",
+        description: "Maximum number of customer messages to analyze.",
       },
     },
     required: ["days", "maxCustomers", "maxMessages"],
@@ -294,7 +295,7 @@ export async function executeClassroomTool(
   rawArguments: string,
 ): Promise<string> {
   try {
-    if (visualResearchTools.some(tool => tool.name === name)) {
+    if (visualResearchTools.some((tool) => tool.name === name)) {
       return await executeVisualResearchTool(name, rawArguments);
     }
     const developerGitToolNames = new Set([
