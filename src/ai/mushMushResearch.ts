@@ -138,37 +138,110 @@ You MUST finish the structured report within the available output budget.`
 export async function runMarketResearch(
   researchRequest: string,
 ): Promise<ResearchReport> {
-  // First attempt: normal bounded research.
-  let response = await performMarketResearch(researchRequest, 12000, false);
+  const today = new Date().toISOString().slice(0, 10);
+  const instructions = marketResearchInstructions(today);
 
-  // One recovery attempt only.
-  //
-  // Research-heavy web calls may consume the output budget through
-  // reasoning/tool work before the structured report is completed.
-  // Retry once with a larger budget and a stronger compactness instruction.
-  //
-  // Do NOT retry other failure types automatically because research may
-  // involve paid external work and its completion state may be uncertain.
+  // Stage 1:
+  // Do the expensive web research without simultaneously forcing the
+  // model to complete the full strict JSON schema.
+  const research = await openai.responses.create({
+    model,
+    instructions: `${instructions}
+
+RESEARCH PHASE ONLY:
+Use web search to gather the strongest relevant evidence.
+Do not try to produce the final structured JSON report yet.
+Keep research notes concise and source-focused.
+Prioritize primary manufacturers, mills, machinery manufacturers,
+official technical documents, and strong trade/technical sources.
+Do not repeat equivalent evidence unnecessarily.`,
+
+    tools: [
+      {
+        type: "web_search",
+        search_context_size: "medium",
+      },
+    ],
+
+    reasoning: {
+      effort: "low",
+    },
+
+    max_output_tokens: 12000,
+
+    input: researchRequest,
+  });
+
+  // An incomplete research response caused only by output length can still
+  // contain useful searched evidence in the response chain. We allow the
+  // synthesis phase to consume what was already gathered instead of
+  // repeating paid searches.
   if (
-    response.status === "incomplete" &&
-    response.incomplete_details?.reason === "max_output_tokens"
+    research.status === "incomplete" &&
+    research.incomplete_details?.reason !== "max_output_tokens"
   ) {
-    response = await performMarketResearch(researchRequest, 20000, true);
-  }
-
-  if (response.status && response.status !== "completed") {
-    const reason = response.incomplete_details?.reason ?? "unknown";
+    const reason = research.incomplete_details?.reason ?? "unknown";
 
     throw new Error(
-      `Mush Mush research incomplete: status=${response.status}, reason=${reason}`,
+      `Mush Mush research collection incomplete: status=${research.status}, reason=${reason}`,
     );
   }
 
-  if (!response.output_parsed) {
+  // Stage 2:
+  // Reuse the research context. No tools are provided here, so the model
+  // cannot perform another web search. Its only job is to turn the gathered
+  // evidence into our strict schema.
+  const synthesis = await openai.responses.parse({
+    model,
+
+    previous_response_id: research.id,
+
+    // previous_response_id does not carry top-level instructions forward,
+    // so intentionally resend the stable research rules.
+    instructions: `${instructions}
+
+SYNTHESIS PHASE:
+Using ONLY the evidence gathered in the preceding research response,
+produce the final structured research report.
+
+Do not perform fresh research.
+Do not invent missing evidence.
+If the research phase did not establish something, record it under
+uncertainties instead of filling the gap from general knowledge.
+
+Keep the report information-dense.
+Prefer 6-10 strong findings over many overlapping findings.
+Do not repeat the same source evidence across multiple findings unless it
+supports genuinely different technical conclusions.
+Return only the structured report.`,
+
+    reasoning: {
+      effort: "low",
+    },
+
+    max_output_tokens: 12000,
+
+    text: {
+      format: zodTextFormat(ResearchReportSchema, "market_research_report"),
+    },
+
+    input:
+      "Synthesize the evidence already gathered into the final research report.",
+  });
+
+  if (synthesis.status && synthesis.status !== "completed") {
+    const reason = synthesis.incomplete_details?.reason ?? "unknown";
+
     throw new Error(
-      `Mush Mush research completed but returned no structured report. output_text_length=${response.output_text?.length ?? 0}`,
+      `Mush Mush research synthesis incomplete: status=${synthesis.status}, reason=${reason}`,
     );
   }
 
-  return response.output_parsed;
+  if (!synthesis.output_parsed) {
+    throw new Error(
+      `Mush Mush research synthesis completed but returned no structured report. output_text_length=${synthesis.output_text?.length ?? 0}`,
+    );
+  }
+
+  return synthesis.output_parsed;
 }
